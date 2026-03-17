@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agentis — The Agent That Thinks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06070a;
+  --fg:#edeae3;
+  --dim:#6e6b64;
+  --border:rgba(237,234,227,0.07);
+  --accent:#c8f04a;
+  --serif:'Instrument Serif',serif;
+  --sans:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:auto;scroll-snap-type:y mandatory}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);overflow-x:hidden;cursor:none}
+
+/* cursor */
+#cur{position:fixed;width:8px;height:8px;background:var(--accent);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s,opacity .3s}
+#cur-r{position:fixed;width:30px;height:30px;border:1px solid rgba(200,240,74,.3);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
+
+/* progress */
+#bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:400;width:0;transition:width .08s linear}
+
+/* nav */
+#nav{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;align-items:center;justify-content:space-between;padding:18px 52px;transition:all .4s;border-bottom:1px solid transparent}
+#nav.s{background:rgba(6,7,10,.88);backdrop-filter:blur(18px);border-color:var(--border)}
+.logo{font-weight:800;font-size:17px;letter-spacing:-.02em;color:var(--fg);text-decoration:none}
+.logo b{color:var(--accent);font-weight:800}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{font-size:13px;color:var(--dim);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--fg)}
+.ncta{padding:8px 18px;border-radius:6px;background:var(--accent);color:#06070a;font-size:13px;font-weight:700;text-decoration:none;transition:opacity .2s}
+.ncta:hover{opacity:.85}
+
+/* canvas - fixed full bg */
+#c{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+
+/* chapter nav dots */
+#dots{position:fixed;right:28px;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:12px}
+.d{width:6px;height:6px;border-radius:50%;background:rgba(237,234,227,.25);border:none;cursor:pointer;padding:0;transition:all .35s}
+.d.on{background:var(--accent);transform:scale(1.6)}
+
+/* chapters */
+.ch{
+  position:relative;z-index:10;
+  min-height:100vh;
+  display:flex;align-items:center;
+  scroll-snap-align:start;
+  padding:100px 52px 80px;
+}
+.ch-c{justify-content:center;text-align:center}
+.ch-l{justify-content:flex-start}
+.ch-r{justify-content:flex-end}
+
+/* panels */
+.panel{
+  max-width:600px;
+  opacity:0;transform:translateY(32px);
+  transition:opacity .75s cubic-bezier(.22,1,.36,1),transform .75s cubic-bezier(.22,1,.36,1);
+}
+.panel.in{opacity:1;transform:translateY(0)}
+.ch-c .panel{max-width:740px}
+
+.tag{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:22px;display:flex;align-items:center;gap:10px}
+.tag::before{content:'';width:20px;height:1px;background:var(--accent)}
+.ch-c .tag{justify-content:center}
+.ch-c .tag::before{display:none}
+
+h1,h2{font-family:var(--serif);font-weight:400;line-height:1.06;margin-bottom:24px}
+h1{font-size:clamp(48px,6.5vw,82px)}
+h2{font-size:clamp(38px,5vw,68px)}
+h1 em,h2 em{font-style:italic;color:var(--accent)}
+
+.sub{font-size:17px;line-height:1.8;color:var(--dim);max-width:500px;margin-bottom:28px}
+.ch-c .sub{margin-left:auto;margin-right:auto}
+
+/* skill pills */
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 28px}
+.pill{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;font-family:var(--mono);border:1px solid;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.pill.in{opacity:1;transform:translateY(0)}
+
+/* terminal */
+.term{background:rgba(0,0,0,.55);border:1px solid var(--border);border-radius:12px;padding:20px 22px;font-family:var(--mono);font-size:12px;line-height:2;backdrop-filter:blur(10px);margin:20px 0;max-height:260px;overflow:hidden}
+.ta{color:var(--accent)}.tg{color:#4af0a0}.td{color:var(--dim)}.tw{color:var(--fg)}
+.tcur{display:inline-block;width:7px;height:13px;background:var(--accent);margin-left:2px;animation:bl .75s step-end infinite;vertical-align:text-bottom}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+
+/* stat row */
+.stats{display:flex;gap:44px;margin:28px 0;flex-wrap:wrap}
+.snum{font-family:var(--serif);font-size:52px;line-height:1;color:var(--fg)}
+.snum b{color:var(--accent);font-weight:400}
+.slbl{font-size:12px;color:var(--dim);letter-spacing:.05em;margin-top:4px}
+
+/* actions */
+.acts{display:flex;gap:12px;flex-wrap:wrap}
+.bp{padding:13px 26px;border-radius:8px;background:var(--accent);color:#06070a;font-size:14px;font-weight:700;font-family:var(--sans);text-decoration:none;border:none;cursor:pointer;transition:opacity .2s,transform .15s}
+.bp:hover{opacity:.88;transform:translateY(-1px)}
+.bg{padding:13px 26px;border-radius:8px;border:1px solid var(--border);color:var(--dim);font-size:14px;font-family:var(--sans);text-decoration:none;transition:all .2s;background:transparent}
+.bg:hover{border-color:rgba(237,234,227,.3);color:var(--fg)}
+.ch-c .acts{justify-content:center}
+
+/* scroll hint */
+.hint{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);text-align:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:8px}
+.hl{width:1px;height:36px;background:linear-gradient(to bottom,var(--dim),transparent);animation:sd 1.6s ease infinite}
+@keyframes sd{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* noise */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.02;pointer-events:none;z-index:600}
+
+/* chapter-specific bg tints */
+.ch::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;transition:opacity 1s}
+#c0::before{background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(200,240,74,.04) 0%,transparent 70%)}
+#c1::before{background:radial-gradient(ellipse 60% 60% at 20% 50%,rgba(224,89,60,.05) 0%,transparent 70%)}
+#c2::before{background:radial-gradient(ellipse 60% 60% at 80% 50%,rgba(83,74,183,.07) 0%,transparent 70%)}
+#c3::before{background:radial-gradient(ellipse 60% 60% at 20% 50%,rgba(29,158,117,.06) 0%,transparent 70%)}
+#c4::before{background:radial-gradient(ellipse 60% 60% at 80% 50%,rgba(200,240,74,.04) 0%,transparent 70%)}
+#c5::before{background:radial-gradient(ellipse 80% 50% at 50% 80%,rgba(200,240,74,.06) 0%,transparent 70%)}
+
+@media(max-width:768px){
+  #nav{padding:16px 20px}
+  .nav-links a:not(.ncta){display:none}
+  .ch{padding:80px 24px 60px}
+  .ch-l,.ch-r{justify-content:center}
+  #dots{display:none}
+  .stats{gap:28px}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div><div id="cur-r"></div>
+<div id="bar"></div>
+<canvas id="c"></canvas>
+
+<nav id="nav">
+  <a href="#" class="logo">Agentis<b>.</b></a>
+  <div class="nav-links">
+    <a href="#c2">How it works</a>
+    <a href="#c4">Personas</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">GitHub</a>
+    <a href="/" class="ncta">Open app →</a>
+  </div>
+</nav>
+
+<div id="dots">
+  <button class="d on" data-t="0"></button>
+  <button class="d" data-t="1"></button>
+  <button class="d" data-t="2"></button>
+  <button class="d" data-t="3"></button>
+  <button class="d" data-t="4"></button>
+  <button class="d" data-t="5"></button>
+</div>
+
+<!-- ── Ch 0: Hero ── -->
+<section class="ch ch-c" id="c0" data-i="0">
+  <div class="panel" id="p0">
+    <div class="tag">Agentis · Open source</div>
+    <h1>The AI agent that<br><em>thinks out loud</em><br>as it builds.</h1>
+    <p class="sub">Not one prompt, one answer. A parallel pipeline of composable skills — Planner, Coder, Reviewer, Security Auditor — running live so you watch every decision unfold. Export the result directly to Claude Code.</p>
+    <div class="acts">
+      <a href="/" class="bp">Start building free</a>
+      <a href="#c1" class="bg">Watch the story ↓</a>
+    </div>
+  </div>
+  <div class="hint"><span>Scroll</span><div class="hl"></div></div>
+</section>
+
+<!-- ── Ch 1: Problem ── -->
+<section class="ch ch-l" id="c1" data-i="1">
+  <div class="panel" id="p1">
+    <div class="tag">The problem</div>
+    <h2>One prompt.<br>One response.<br><em>Not enough.</em></h2>
+    <p class="sub">You give an AI a real task. It returns a wall of code. Maybe it works. You have no idea why it made the choices it made. There's no plan, no structure, no thinking visible.</p>
+    <p class="sub">Real work has phases. Planning before building. Reviewing before shipping. Compressing everything into one prompt loses all of that depth.</p>
+  </div>
+</section>
+
+<!-- ── Ch 2: Insight ── -->
+<section class="ch ch-r" id="c2" data-i="2">
+  <div class="panel" id="p2">
+    <div class="tag">The insight</div>
+    <h2>Each phase,<br>its own<br><em>expert skill.</em></h2>
+    <p class="sub">The Planner breaks the task apart. The Architect designs the structure. The Coder writes it. The Reviewer catches what was missed. Each skill sees all previous output — the chain compounds.</p>
+    <div class="pills" id="pills">
+      <span class="pill" style="background:rgba(56,138,221,.1);border-color:rgba(56,138,221,.3);color:#85b7eb" data-d="0">Planner</span>
+      <span class="pill" style="background:rgba(29,158,117,.1);border-color:rgba(29,158,117,.3);color:#5dcaa5" data-d="1">Architect</span>
+      <span class="pill" style="background:rgba(83,74,183,.1);border-color:rgba(83,74,183,.3);color:#afa9ec" data-d="2">Coder</span>
+      <span class="pill" style="background:rgba(186,117,23,.1);border-color:rgba(186,117,23,.3);color:#ef9f27" data-d="3">Reviewer</span>
+      <span class="pill" style="background:rgba(99,153,34,.1);border-color:rgba(99,153,34,.3);color:#97c459" data-d="4">Documenter</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Ch 3: In action ── -->
+<section class="ch ch-l" id="c3" data-i="3">
+  <div class="panel" id="p3">
+    <div class="tag">In action</div>
+    <h2><em>Watch it</em><br>think in<br>real time.</h2>
+    <p class="sub">Every skill streams its output token by token. No waiting, no spinner. You see the actual reasoning as it happens.</p>
+    <div class="term" id="term"><div id="tl"></div></div>
+  </div>
+</section>
+
+<!-- ── Ch 4: Everyone ── -->
+<section class="ch ch-r" id="c4" data-i="4">
+  <div class="panel" id="p4">
+    <div class="tag">Universal</div>
+    <h2>Built for<br>everyone,<br><em>not just devs.</em></h2>
+    <p class="sub">Switch persona and the entire skill graph changes. A founder runs Analyst → Writer for pitch decks. A marketer runs Writer → Analyst for campaigns. A student runs Researcher → Writer for essays.</p>
+    <div class="stats">
+      <div><div class="snum">9<b>+</b></div><div class="slbl">Personas</div></div>
+      <div><div class="snum">18<b>+</b></div><div class="slbl">Skills</div></div>
+      <div><div class="snum">6</div><div class="slbl">Templates</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Ch 5: CTA ── -->
+<section class="ch ch-c" id="c5" data-i="5">
+  <div class="panel" id="p5">
+    <div class="tag">Start now</div>
+    <h2>Your next build<br>starts with<br><em>one sentence.</em></h2>
+    <p class="sub">Free. Open source. No account needed. Bring your Anthropic API key and go.</p>
+    <div class="acts">
+      <a href="/" class="bp">Open Agentis free →</a>
+      <a href="https://github.com/Dhwanil25/Agentis" class="bg" target="_blank">Star on GitHub ↗</a>
+    </div>
+    <p style="margin-top:32px;font-size:12px;color:var(--dim)">MIT licensed · Zero backend · Claude API · Export to Claude Code</p>
+  </div>
+</section>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// THREE.JS SCENE — advanced objects that morph per chapter
+// ══════════════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('c')
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'})
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
+renderer.shadowMap.enabled = false
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.1
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
+camera.position.set(0,0,26)
+
+function resize(){
+  const w=window.innerWidth, h=window.innerHeight
+  renderer.setSize(w,h)
+  camera.aspect=w/h
+  camera.updateProjectionMatrix()
+}
+resize()
+window.addEventListener('resize',resize,{passive:true})
+
+// ── Shared accent color ───────────────────────────────────────────────────
+const C_ACCENT = new THREE.Color(0xc8f04a)
+const C_PURPLE = new THREE.Color(0x7f77dd)
+const C_TEAL   = new THREE.Color(0x1d9e75)
+const C_CORAL  = new THREE.Color(0xd85a30)
+const C_BLUE   = new THREE.Color(0x378add)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 0: Hero — Rotating torus knot with custom wireframe glow
+// ══════════════════════════════════════════════════════════════════════════
+const tkGeo = new THREE.TorusKnotGeometry(5, 1.6, 220, 24, 2, 3)
+
+// Solid inner mesh with dark material
+const tkMat = new THREE.MeshPhongMaterial({
+  color: 0x0d1117,
+  emissive: 0x0a1a08,
+  shininess:80,
+  transparent:true, opacity:0.85,
+})
+const tkMesh = new THREE.Mesh(tkGeo, tkMat)
+scene.add(tkMesh)
+
+// Wireframe overlay — glowing green edges
+const tkWireMat = new THREE.MeshBasicMaterial({
+  color: C_ACCENT,
+  wireframe:true,
+  transparent:true, opacity:0.18,
+})
+const tkWire = new THREE.Mesh(tkGeo, tkWireMat)
+scene.add(tkWire)
+
+// Secondary outer wireframe scaled up, purple
+const tkWire2Mat = new THREE.MeshBasicMaterial({
+  color: C_PURPLE,
+  wireframe:true,
+  transparent:true, opacity:0.06,
+})
+const tkWire2 = new THREE.Mesh(tkGeo, tkWire2Mat)
+tkWire2.scale.setScalar(1.08)
+scene.add(tkWire2)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 1: Problem — Fragmented icosahedron (exploded shards)
+// ══════════════════════════════════════════════════════════════════════════
+const icoGrp = new THREE.Group()
+const icoBaseGeo = new THREE.IcosahedronGeometry(6, 1)
+// Explode each triangle face as a separate shard
+const icoPos = icoBaseGeo.attributes.position
+const shards = []
+for(let i=0;i<icoPos.count;i+=3){
+  const sg = new THREE.BufferGeometry()
+  const verts = new Float32Array(9)
+  for(let j=0;j<3;j++){
+    verts[j*3]   = icoPos.getX(i+j)
+    verts[j*3+1] = icoPos.getY(i+j)
+    verts[j*3+2] = icoPos.getZ(i+j)
+  }
+  sg.setAttribute('position', new THREE.BufferAttribute(verts,3))
+  sg.computeVertexNormals()
+  const cx=(verts[0]+verts[3]+verts[6])/3
+  const cy=(verts[1]+verts[4]+verts[7])/3
+  const cz=(verts[2]+verts[5]+verts[8])/3
+  const sm = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({
+    color: Math.random()>.5 ? C_CORAL : C_PURPLE,
+    transparent:true, opacity:0.55,
+    side:THREE.DoubleSide,
+    wireframe: Math.random()>.4,
+  }))
+  sm.position.set(0,0,0)
+  sm.userData = {ox:cx,oy:cy,oz:cz, phase:Math.random()*Math.PI*2, speed:0.3+Math.random()*0.4}
+  icoGrp.add(sm)
+  shards.push(sm)
+}
+scene.add(icoGrp)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 2: Insight — Skill-graph node network (spheres + edges)
+// ══════════════════════════════════════════════════════════════════════════
+const graphGrp = new THREE.Group()
+const nodeColors = [C_ACCENT, C_PURPLE, C_TEAL, C_BLUE, new THREE.Color(0xef9f27)]
+const nodePositions = []
+const nodeMeshes = []
+const NODE_N = 28
+const sGeo = new THREE.SphereGeometry(0.22, 16, 16)
+
+for(let i=0;i<NODE_N;i++){
+  const c = nodeColors[i%nodeColors.length]
+  const m = new THREE.Mesh(sGeo, new THREE.MeshBasicMaterial({color:c, transparent:true, opacity:0.8}))
+  const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=3+Math.random()*5.5
+  const x=r*Math.sin(ph)*Math.cos(th), y=r*Math.sin(ph)*Math.sin(th)*.6, z=r*Math.cos(ph)*.5
+  m.position.set(x,y,z)
+  m.userData={ox:x,oy:y,oz:z,phase:Math.random()*Math.PI*2,speed:.3+Math.random()*.4}
+  nodePositions.push(new THREE.Vector3(x,y,z))
+  nodeMeshes.push(m)
+  graphGrp.add(m)
+}
+// Edges
+const edgeLines = []
+for(let i=0;i<NODE_N;i++){
+  for(let j=i+1;j<NODE_N;j++){
+    if(nodePositions[i].distanceTo(nodePositions[j])<5.5){
+      const eg = new THREE.BufferGeometry().setFromPoints([nodePositions[i],nodePositions[j]])
+      const el = new THREE.Line(eg, new THREE.LineBasicMaterial({color:C_ACCENT, transparent:true, opacity:.08}))
+      graphGrp.add(el)
+      edgeLines.push({line:el,i,j})
+    }
+  }
+}
+scene.add(graphGrp)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 3: Action — DNA-like double helix (instanced cylinders)
+// ══════════════════════════════════════════════════════════════════════════
+const helixGrp = new THREE.Group()
+const HELIX_N = 40
+const cGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8)
+
+for(let i=0;i<HELIX_N;i++){
+  const t = (i/HELIX_N)*Math.PI*6
+  const r = 3.5
+  // Strand A
+  const mA = new THREE.Mesh(cGeo, new THREE.MeshBasicMaterial({color:C_ACCENT, transparent:true, opacity:.8}))
+  mA.position.set(Math.cos(t)*r, i*0.5-10, Math.sin(t)*r)
+  mA.userData={t, strand:'A'}
+  helixGrp.add(mA)
+  // Strand B (offset by pi)
+  const mB = new THREE.Mesh(cGeo, new THREE.MeshBasicMaterial({color:C_PURPLE, transparent:true, opacity:.8}))
+  mB.position.set(Math.cos(t+Math.PI)*r, i*0.5-10, Math.sin(t+Math.PI)*r)
+  mB.userData={t:t+Math.PI, strand:'B'}
+  helixGrp.add(mB)
+  // Rung connecting A to B
+  const rungPts=[mA.position.clone(), mB.position.clone()]
+  const rg = new THREE.BufferGeometry().setFromPoints(rungPts)
+  const rl = new THREE.Line(rg, new THREE.LineBasicMaterial({color:C_TEAL, transparent:true, opacity:.3}))
+  helixGrp.add(rl)
+}
+helixGrp.position.y = 0
+scene.add(helixGrp)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 4: Everyone — Morphing octahedron + particle burst
+// ══════════════════════════════════════════════════════════════════════════
+const octGrp = new THREE.Group()
+const octGeo = new THREE.OctahedronGeometry(5, 2)
+const octMat = new THREE.MeshBasicMaterial({color:C_TEAL, wireframe:true, transparent:true, opacity:.22})
+const octMesh = new THREE.Mesh(octGeo, octMat)
+octGrp.add(octMesh)
+// Inner solid
+const octInner = new THREE.Mesh(
+  new THREE.OctahedronGeometry(4.2, 0),
+  new THREE.MeshPhongMaterial({color:0x06080a, emissive:0x061510, transparent:true, opacity:.9, wireframe:false})
+)
+octGrp.add(octInner)
+// Orbit rings
+for(let r=0;r<3;r++){
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(5.5+r*1.2, 0.03, 8, 80),
+    new THREE.MeshBasicMaterial({color:[C_ACCENT,C_PURPLE,C_TEAL][r], transparent:true, opacity:.25})
+  )
+  ring.rotation.x = [Math.PI/2, Math.PI/4, Math.PI/3][r]
+  ring.userData={rspeed:[.008,.006,.005][r], raxis:r}
+  octGrp.add(ring)
+}
+scene.add(octGrp)
+
+// ══════════════════════════════════════════════════════════════════════════
+// OBJECT 5: CTA — Expanding icosphere with glow rings
+// ══════════════════════════════════════════════════════════════════════════
+const ctaGrp = new THREE.Group()
+const ctaCore = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(4, 2),
+  new THREE.MeshBasicMaterial({color:C_ACCENT, wireframe:true, transparent:true, opacity:.28})
+)
+ctaGrp.add(ctaCore)
+// Pulsing shells
+for(let s=0;s<4;s++){
+  const shell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(4+s*1.5, 1),
+    new THREE.MeshBasicMaterial({color:C_ACCENT, wireframe:true, transparent:true, opacity:.06-s*.012})
+  )
+  shell.userData={s}
+  ctaGrp.add(shell)
+}
+scene.add(ctaGrp)
+
+// ══════════════════════════════════════════════════════════════════════════
+// LIGHTS
+// ══════════════════════════════════════════════════════════════════════════
+const ambient = new THREE.AmbientLight(0xffffff, 0.3)
+scene.add(ambient)
+const pL1 = new THREE.PointLight(0xc8f04a, 2.5, 60)
+pL1.position.set(10, 8, 12)
+scene.add(pL1)
+const pL2 = new THREE.PointLight(0x7f77dd, 1.8, 50)
+pL2.position.set(-10, -6, 8)
+scene.add(pL2)
+const pL3 = new THREE.PointLight(0x1d9e75, 1.5, 40)
+pL3.position.set(0, -12, -5)
+scene.add(pL3)
+
+// ══════════════════════════════════════════════════════════════════════════
+// SHOW / HIDE objects per chapter
+// ══════════════════════════════════════════════════════════════════════════
+const allGroups = [
+  [tkMesh, tkWire, tkWire2],   // ch0
+  [icoGrp],                    // ch1
+  [graphGrp],                  // ch2
+  [helixGrp],                  // ch3
+  [octGrp],                    // ch4
+  [ctaGrp],                    // ch5
+]
+let activeChapter = 0
+// Initially show ch0, hide rest
+allGroups.forEach((g,i)=>g.forEach(o=>o.visible=(i===0)))
+
+function setChapter(idx){
+  if(idx===activeChapter) return
+  allGroups[activeChapter].forEach(o=>o.visible=false)
+  activeChapter=idx
+  allGroups[activeChapter].forEach(o=>o.visible=true)
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MOUSE + STATE
+// ══════════════════════════════════════════════════════════════════════════
+let mx=0,my=0,rmx=0,rmy=0
+document.addEventListener('mousemove',e=>{
+  mx=(e.clientX/window.innerWidth-.5)*2
+  my=(e.clientY/window.innerHeight-.5)*2
+},{passive:true})
+
+// ══════════════════════════════════════════════════════════════════════════
+// RENDER LOOP
+// ══════════════════════════════════════════════════════════════════════════
+const clk = new THREE.Clock()
+let pulseTimer=0, pulseEdge=null
+
+renderer.setAnimationLoop(()=>{
+  const t=clk.getElapsedTime()
+  rmx+=(mx-rmx)*.05; rmy+=(my-rmy)*.05
+
+  // Camera gentle parallax
+  camera.position.x = rmx*2.5
+  camera.position.y = -rmy*1.5
+  camera.lookAt(0,0,0)
+
+  // ── Ch 0: Torus knot rotation ─────────────────────────────────────
+  if(activeChapter===0){
+    tkMesh.rotation.x = t*.18
+    tkMesh.rotation.y = t*.12
+    tkWire.rotation.x = t*.18
+    tkWire.rotation.y = t*.12
+    tkWire2.rotation.x = -t*.09
+    tkWire2.rotation.y = t*.15
+    tkWireMat.opacity = .13+.07*Math.sin(t*.8)
+    tkWire2Mat.opacity = .04+.03*Math.sin(t*.5+1)
+  }
+
+  // ── Ch 1: Exploding icosahedron ───────────────────────────────────
+  if(activeChapter===1){
+    icoGrp.rotation.y = t*.08
+    const explode = .8+.5*Math.sin(t*.35)
+    shards.forEach(s=>{
+      const d=s.userData
+      s.position.set(d.ox*explode, d.oy*explode, d.oz*explode)
+      s.rotation.x = t*d.speed+d.phase
+      s.rotation.z = t*d.speed*.7+d.phase
+    })
+  }
+
+  // ── Ch 2: Skill graph float + edge pulse ─────────────────────────
+  if(activeChapter===2){
+    graphGrp.rotation.y = t*.06
+    nodeMeshes.forEach(n=>{
+      const d=n.userData
+      n.position.x = d.ox+Math.sin(t*d.speed+d.phase)*.5
+      n.position.y = d.oy+Math.cos(t*d.speed*.7+d.phase)*.4
+      n.material.opacity = .5+.35*Math.sin(t*d.speed+d.phase)
+    })
+    edgeLines.forEach(({line,i,j})=>{
+      const p=line.geometry.attributes.position
+      p.setXYZ(0,nodeMeshes[i].position.x,nodeMeshes[i].position.y,nodeMeshes[i].position.z)
+      p.setXYZ(1,nodeMeshes[j].position.x,nodeMeshes[j].position.y,nodeMeshes[j].position.z)
+      p.needsUpdate=true
+    })
+    // Random edge pulse
+    pulseTimer+=.016
+    if(pulseTimer>.6){
+      pulseTimer=0
+      if(pulseEdge) pulseEdge.material.opacity=.08
+      pulseEdge=edgeLines[Math.floor(Math.random()*edgeLines.length)]?.line||null
+      if(pulseEdge){pulseEdge.material.color.copy(C_ACCENT);pulseEdge.material.opacity=.7}
+    }
+    if(pulseEdge) pulseEdge.material.opacity*=.96
+  }
+
+  // ── Ch 3: Helix rotation + rung pulse ─────────────────────────────
+  if(activeChapter===3){
+    helixGrp.rotation.y = t*.12
+    // Animate rung color brightness
+    helixGrp.children.forEach((c,idx)=>{
+      if(c instanceof THREE.Line){
+        c.material.opacity = .15+.2*Math.abs(Math.sin(t*1.2+idx*.4))
+      }
+    })
+  }
+
+  // ── Ch 4: Octahedron morph + ring orbits ─────────────────────────
+  if(activeChapter===4){
+    octMesh.rotation.x = t*.1
+    octMesh.rotation.y = t*.14
+    octInner.rotation.x = -t*.08
+    octInner.rotation.y = t*.11
+    octGrp.children.forEach(c=>{
+      if(c.userData.raxis!==undefined){
+        const ax=['x','y','z'][c.userData.raxis%3]
+        c.rotation[ax] += c.userData.rspeed
+      }
+    })
+    octMat.opacity = .15+.1*Math.sin(t*.6)
+  }
+
+  // ── Ch 5: CTA pulsing shells ──────────────────────────────────────
+  if(activeChapter===5){
+    ctaCore.rotation.x = t*.09
+    ctaCore.rotation.y = t*.13
+    ctaGrp.children.forEach((c,i)=>{
+      if(i===0) return
+      const s=c.userData.s
+      const scale = 1+.06*Math.sin(t*.8+s*1.2)
+      c.scale.setScalar(scale)
+      c.rotation.y = t*.06*(i%2===0?1:-1)
+      c.material.opacity = (.055-s*.01)*(1+.4*Math.sin(t*.8+s))
+    })
+  }
+
+  // Lights orbit
+  pL1.position.x = Math.sin(t*.3)*14
+  pL1.position.z = Math.cos(t*.3)*14
+  pL2.position.x = Math.cos(t*.2)*12
+  pL2.position.z = Math.sin(t*.2)*12
+
+  renderer.render(scene,camera)
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// SCROLL STORY ENGINE
+// ══════════════════════════════════════════════════════════════════════════
+const chapters = document.querySelectorAll('.ch')
+const panels = Array.from({length:6},(_,i)=>document.getElementById('p'+i))
+const dotsEl = document.querySelectorAll('.d')
+const bar = document.getElementById('bar')
+const nav = document.getElementById('nav')
+
+panels[0].classList.add('in')
+
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting) return
+    const idx = parseInt(e.target.dataset.i)
+    // 3D scene
+    setChapter(idx)
+    // Dots
+    dotsEl.forEach((d,i)=>d.classList.toggle('on',i===idx))
+    // Panel
+    panels.forEach((p,i)=>{
+      if(i===idx){ setTimeout(()=>p.classList.add('in'),60) }
+      else p.classList.remove('in')
+    })
+    // Chapter triggers
+    if(idx===2) animPills()
+    if(idx===3) startTerm()
+  })
+},{threshold:0.42})
+chapters.forEach(c=>obs.observe(c))
+
+// Dot clicks
+dotsEl.forEach(d=>{
+  d.addEventListener('click',()=>{
+    document.querySelector(`[data-i="${d.dataset.t}"]`)?.scrollIntoView({behavior:'smooth'})
+  })
+})
+
+// Progress + nav
+window.addEventListener('scroll',()=>{
+  const pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100
+  bar.style.width=pct+'%'
+  nav.classList.toggle('s',window.scrollY>50)
+},{passive:true})
+
+// ── Pill animation ────────────────────────────────────────────────────────
+let pillsDone=false
+function animPills(){
+  if(pillsDone) return; pillsDone=true
+  document.querySelectorAll('.pill').forEach((p,i)=>setTimeout(()=>p.classList.add('in'),i*110))
+}
+
+// ── Terminal animation ────────────────────────────────────────────────────
+const LINES=[
+  {t:'▸ Planner activating...',c:'ta',d:150},
+  {t:'  Decomposing task into subtasks',c:'td',d:500},
+  {t:'  → Sliding window algorithm',c:'td',d:850},
+  {t:'▸ Architect designing...',c:'ta',d:1300},
+  {t:'  src/middleware/rateLimiter.ts',c:'tg',d:1650},
+  {t:'  src/types/rateLimit.ts',c:'tg',d:1880},
+  {t:'▸ Coder writing implementation...',c:'ta',d:2350},
+  {t:'  export function rateLimiter()',c:'tw',d:2750},
+  {t:'  47 lines · TypeScript · fully typed',c:'td',d:3050},
+  {t:'▸ Reviewer checking...',c:'ta',d:3520},
+  {t:'  ✓ No vulnerabilities found',c:'tg',d:3900},
+  {t:'  ✓ Error handling complete',c:'tg',d:4100},
+  {t:'▸ Documenter writing docs...',c:'ta',d:4550},
+  {t:'  ✓ README.md updated',c:'tg',d:4900},
+  {t:'Done — 5 skills · 0 errors · 1 task',c:'ta',d:5300},
+]
+let termDone=false
+function startTerm(){
+  if(termDone) return; termDone=true
+  const ct=document.getElementById('tl')
+  LINES.forEach(({t,c,d})=>setTimeout(()=>{
+    const div=document.createElement('div')
+    div.className=c; div.textContent=t
+    ct.appendChild(div)
+    ct.scrollTop=ct.scrollHeight
+  },d))
+}
+
+// ── Cursor ────────────────────────────────────────────────────────────────
+const cur=document.getElementById('cur'), curR=document.getElementById('cur-r')
+let cmx=0,cmy=0,crx=0,cry=0
+document.addEventListener('mousemove',e=>{
+  cmx=e.clientX;cmy=e.clientY
+  cur.style.left=cmx+'px';cur.style.top=cmy+'px'
+},{passive:true})
+;(function ac(){
+  crx+=(cmx-crx)*.1;cry+=(cmy-cry)*.1
+  curR.style.left=crx+'px';curR.style.top=cry+'px'
+  requestAnimationFrame(ac)
+})()
+document.querySelectorAll('a,button').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='14px';cur.style.height='14px';curR.style.width='46px';curR.style.height='46px'})
+  el.addEventListener('mouseleave',()=>{cur.style.width='8px';cur.style.height='8px';curR.style.width='30px';curR.style.height='30px'})
+})
+</script>
+</body>
+</html>

@@ -93,7 +93,7 @@ export default function App() {
       <div className={cardClass}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em' }}>Agentis</div>
+          <a href="/landing.html" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--fg)', textDecoration: 'none' }}>Agentis</a>
           <button
             onClick={reset}
             style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
