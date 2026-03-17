@@ -9,6 +9,7 @@ import { TemplateBrowser } from '@/components/TemplateBrowser'
 import { WorkflowPreview } from '@/components/WorkflowPreview'
 import { ExecuteScreen } from '@/components/ExecuteScreen'
 import { OutputScreen } from '@/components/OutputScreen'
+import { PluginScreen, type PluginId } from '@/components/PluginScreen'
 import { WORKFLOW_TEMPLATES } from '@/data/templates'
 
 // Wide layout kicks in for execute and output steps
@@ -18,6 +19,9 @@ export default function App() {
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY ?? '')
   const [keyInput, setKeyInput] = useState('')
   const [keySet, setKeySet] = useState(!!import.meta.env.VITE_ANTHROPIC_API_KEY)
+  const [activePlugin, setActivePlugin] = useState<PluginId | null>(
+    import.meta.env.VITE_ANTHROPIC_API_KEY ? 'web' : null
+  )
 
   const {
     state,
@@ -82,6 +86,20 @@ export default function App() {
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 16, marginBottom: 0 }}>
             Your key is stored in memory only. Never sent anywhere except directly to api.anthropic.com.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Plugin selection (shown once after API key entry) ────────────────────
+  if (keySet && activePlugin === null) {
+    return (
+      <div className="shell">
+        <div className="card" style={{ maxWidth: 760 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+            <a href="/landing.html" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--fg)', textDecoration: 'none' }}>Agentis</a>
+          </div>
+          <PluginScreen onContinue={(plugin) => setActivePlugin(plugin)} />
         </div>
       </div>
     )
@@ -199,12 +217,13 @@ export default function App() {
             task={state.task}
             persona={state.persona!}
             templateId={state.templateId ?? ''}
+            highlightExport={activePlugin === 'claude-code'}
             onReset={reset}
           />
         )}
 
         {state.step === 'output' && state.mode !== 'template' && (
-          <LegacyOutputScreen pipeline={state.pipeline} task={state.task} persona={state.persona!} onReset={reset} />
+          <LegacyOutputScreen pipeline={state.pipeline} task={state.task} persona={state.persona!} highlightExport={activePlugin === 'claude-code'} onReset={reset} />
         )}
       </div>
     </div>
@@ -294,7 +313,7 @@ function LegacyExecuteScreen({
   )
 }
 
-function LegacyOutputScreen({ pipeline, task, persona, onReset }: { pipeline: PipelineStep[]; task: string; persona: Persona; onReset: () => void }) {
+function LegacyOutputScreen({ pipeline, task, persona, highlightExport, onReset }: { pipeline: PipelineStep[]; task: string; persona: Persona; highlightExport?: boolean; onReset: () => void }) {
   const [active, setActive] = useLocalState(pipeline[pipeline.length - 1]?.id ?? '')
   const [exporting, setExporting] = useLocalState(false)
   const activeStep = pipeline.find(p => p.id === active)
@@ -332,7 +351,7 @@ function LegacyOutputScreen({ pipeline, task, persona, onReset }: { pipeline: Pi
         <button
           onClick={handleExport}
           disabled={exporting}
-          style={{ padding: '9px 18px', borderRadius: 10, border: '0.5px solid #0F6E56', background: '#E1F5EE', color: '#085041', fontSize: 13, fontWeight: 500, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{ padding: highlightExport ? '11px 22px' : '9px 18px', borderRadius: 10, border: highlightExport ? '1.5px solid #0F6E56' : '0.5px solid #0F6E56', background: highlightExport ? '#1D9E75' : '#E1F5EE', color: highlightExport ? '#fff' : '#085041', fontSize: highlightExport ? 14 : 13, fontWeight: 600, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6, boxShadow: highlightExport ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none' }}
         >
           {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
         </button>

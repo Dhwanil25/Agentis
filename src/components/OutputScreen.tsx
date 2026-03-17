@@ -14,10 +14,11 @@ interface Props {
   task: string
   persona: Persona
   templateId: string
+  highlightExport?: boolean
   onReset: () => void
 }
 
-export function OutputScreen({ nodes, artifacts, task, persona, templateId, onReset }: Props) {
+export function OutputScreen({ nodes, artifacts, task, persona, templateId, highlightExport, onReset }: Props) {
   const [tab, setTab] = useState<Tab>(artifacts.length > 0 ? 'files' : 'trace')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -240,21 +241,22 @@ export function OutputScreen({ nodes, artifacts, task, persona, templateId, onRe
           onClick={handleExport}
           disabled={exporting}
           style={{
-            padding: '9px 18px',
+            padding: highlightExport ? '11px 22px' : '9px 18px',
             borderRadius: 10,
-            border: '0.5px solid #0F6E56',
-            background: '#E1F5EE',
-            color: '#085041',
-            fontSize: 13,
-            fontWeight: 500,
+            border: highlightExport ? '1.5px solid #0F6E56' : '0.5px solid #0F6E56',
+            background: highlightExport ? '#1D9E75' : '#E1F5EE',
+            color: highlightExport ? '#fff' : '#085041',
+            fontSize: highlightExport ? 14 : 13,
+            fontWeight: 600,
             cursor: exporting ? 'not-allowed' : 'pointer',
             opacity: exporting ? 0.6 : 1,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            boxShadow: highlightExport ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none',
           }}
         >
-          {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
+          {exporting ? 'Packaging…' : highlightExport ? '↓ Export to Claude Code' : '↓ Export to Claude Code'}
         </button>
       </div>
 
