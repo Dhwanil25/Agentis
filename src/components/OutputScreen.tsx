@@ -1,25 +1,40 @@
 import { useState } from 'react'
 import type { WorkflowNode } from '@/types/workflow'
 import type { Artifact } from '@/types/artifacts'
+import type { Persona } from '@/types'
 import { ArtifactViewer } from './ArtifactViewer'
 import { downloadArtifactBundle } from '@/lib/download'
+import { downloadWorkflowJobZip } from '@/lib/exportJob'
 
 type Tab = 'files' | 'trace' | 'summary'
 
 interface Props {
   nodes: WorkflowNode[]
   artifacts: Artifact[]
+  task: string
+  persona: Persona
+  templateId: string
   onReset: () => void
 }
 
-export function OutputScreen({ nodes, artifacts, onReset }: Props) {
+export function OutputScreen({ nodes, artifacts, task, persona, templateId, onReset }: Props) {
   const [tab, setTab] = useState<Tab>(artifacts.length > 0 ? 'files' : 'trace')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const totalWords = nodes.reduce((sum, n) => sum + (n.output ? n.output.split(/\s+/).filter(Boolean).length : 0), 0)
 
   const handleDownload = () => {
     downloadArtifactBundle(artifacts, 'agentis-output')
+  }
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await downloadWorkflowJobZip(task, persona, nodes, artifacts, templateId)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -219,9 +234,36 @@ export function OutputScreen({ nodes, artifacts, onReset }: Props) {
       )}
 
       {/* Bottom bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, flexWrap: 'wrap', gap: 10 }}>
         <button className="btn-secondary" onClick={onReset}>Start over</button>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Powered by Agentis + Claude API</span>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 10,
+            border: '0.5px solid #0F6E56',
+            background: '#E1F5EE',
+            color: '#085041',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: exporting ? 'not-allowed' : 'pointer',
+            opacity: exporting ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
+        </button>
+      </div>
+
+      {/* Export instructions */}
+      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--surface)', border: '0.5px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+        <strong style={{ color: 'var(--fg)', fontWeight: 500 }}>How to use:</strong>
+        {' '}Download the zip → unzip into your repo root → run{' '}
+        <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-2, #f3f4f6)', padding: '1px 5px', borderRadius: 4 }}>bash agentis-job/execute.sh</code>
+        {' '}→ Claude Code reads the plan, places the files, runs tests, and opens a PR.
       </div>
     </div>
   )

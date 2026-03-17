@@ -196,12 +196,15 @@ export default function App() {
           <OutputScreen
             nodes={state.graph.nodes}
             artifacts={state.allArtifacts}
+            task={state.task}
+            persona={state.persona!}
+            templateId={state.templateId ?? ''}
             onReset={reset}
           />
         )}
 
         {state.step === 'output' && state.mode !== 'template' && (
-          <LegacyOutputScreen pipeline={state.pipeline} onReset={reset} />
+          <LegacyOutputScreen pipeline={state.pipeline} task={state.task} persona={state.persona!} onReset={reset} />
         )}
       </div>
     </div>
@@ -211,7 +214,9 @@ export default function App() {
 // ── Legacy screens for freeform mode (preserve existing behaviour) ────────
 
 import type { PipelineStep } from '@/hooks/useAgent'
+import type { Persona } from '@/types'
 import { useRef, useEffect, useState as useLocalState } from 'react'
+import { downloadJobZip } from '@/lib/exportJob'
 
 function LegacyExecuteScreen({
   pipeline,
@@ -289,9 +294,20 @@ function LegacyExecuteScreen({
   )
 }
 
-function LegacyOutputScreen({ pipeline, onReset }: { pipeline: PipelineStep[]; onReset: () => void }) {
+function LegacyOutputScreen({ pipeline, task, persona, onReset }: { pipeline: PipelineStep[]; task: string; persona: Persona; onReset: () => void }) {
   const [active, setActive] = useLocalState(pipeline[pipeline.length - 1]?.id ?? '')
+  const [exporting, setExporting] = useLocalState(false)
   const activeStep = pipeline.find(p => p.id === active)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await downloadJobZip(task, persona, pipeline)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 6px' }}>Done</h2>
@@ -311,9 +327,21 @@ function LegacyOutputScreen({ pipeline, onReset }: { pipeline: PipelineStep[]; o
           </div>
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, flexWrap: 'wrap', gap: 10 }}>
         <button className="btn-secondary" onClick={onReset}>Start over</button>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Powered by Agentis + Claude API</span>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          style={{ padding: '9px 18px', borderRadius: 10, border: '0.5px solid #0F6E56', background: '#E1F5EE', color: '#085041', fontSize: 13, fontWeight: 500, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
+        </button>
+      </div>
+      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--surface)', border: '0.5px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+        <strong style={{ color: 'var(--fg)', fontWeight: 500 }}>How to use:</strong>
+        {' '}Download the zip → unzip into your repo root → run{' '}
+        <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-2, #f3f4f6)', padding: '1px 5px', borderRadius: 4 }}>bash agentis-job/execute.sh</code>
+        {' '}→ Claude Code reads the plan, places the files, runs tests, and opens a PR.
       </div>
     </div>
   )

@@ -1,0 +1,15 @@
+{
+  "id": "claude-code-bridge",
+  "name": "Claude Code Bridge",
+  "version": "1.0.0",
+  "author": "Agentis",
+  "description": "Export any Agentis pipeline to Claude Code for local execution — places files, runs tests, fixes errors, and opens a PR automatically.",
+  "type": "bridge",
+  "skills": [],
+  "adds_to_output": true,
+  "export_format": "zip",
+  "requires": {
+    "claude_code": ">=1.0.0"
+  },
+  "repo": "https://github.com/YOUR_USERNAME/agentis-claude-code-plugin"
+}
