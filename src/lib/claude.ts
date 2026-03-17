@@ -66,7 +66,7 @@ export function buildPipeline(task: string, personaId: string): AgentStep[] {
   ]
 }
 
-function getSkillPrompt(skill: string, task: string, previousOutputs: string[]): string {
+function getSkillPrompt(skill: string, _task: string, previousOutputs: string[]): string {
   const context = previousOutputs.length > 0
     ? `\n\nPrevious steps output:\n${previousOutputs.map((o, i) => `Step ${i + 1}:\n${o}`).join('\n\n---\n\n')}`
     : ''

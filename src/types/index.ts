@@ -18,7 +18,7 @@ export interface Persona {
   suggestions: string[]
 }
 
-export type AgentStep = 'persona' | 'task' | 'graph' | 'execute' | 'output'
+export type AgentStep = 'persona' | 'task' | 'graph' | 'execute' | 'output' | 'mode' | 'template' | 'preview'
 
 export interface AgentState {
   step: AgentStep
@@ -28,4 +28,6 @@ export interface AgentState {
   output: string
   loading: boolean
   error: string | null
+  templateId: string | null
+  mode: 'template' | 'freeform' | null
 }

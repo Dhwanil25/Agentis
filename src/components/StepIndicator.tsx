@@ -2,13 +2,13 @@ import type { AgentStep } from '@/types'
 
 const STEPS: { id: AgentStep; label: string }[] = [
   { id: 'persona',  label: 'Who' },
-  { id: 'task',     label: 'What' },
-  { id: 'graph',    label: 'Skills' },
+  { id: 'mode',     label: 'Mode' },
   { id: 'execute',  label: 'Run' },
   { id: 'output',   label: 'Output' },
 ]
 
-const ORDER: AgentStep[] = ['persona', 'task', 'graph', 'execute', 'output']
+// Full ordering for progress calculation (includes non-visible steps)
+const ORDER: AgentStep[] = ['persona', 'mode', 'template', 'preview', 'task', 'graph', 'execute', 'output']
 
 interface Props {
   current: AgentStep

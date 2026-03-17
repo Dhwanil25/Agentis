@@ -92,3 +92,119 @@ input:focus, textarea:focus {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Wide layout (execute / output screens) ───────────────────────────── */
+.shell-wide {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 20px 80px;
+}
+
+.card-wide {
+  width: 100%;
+  max-width: 1100px;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+}
+
+/* ── Split panel (execute screen) ─────────────────────────────────────── */
+.split-panel {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  min-height: 520px;
+}
+
+.split-panel-sidebar {
+  border-right: 0.5px solid var(--border);
+  padding-right: 16px;
+  overflow-y: auto;
+  max-height: 560px;
+}
+
+.split-panel-main {
+  overflow-y: auto;
+  max-height: 560px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg);
+  padding: 0 4px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover { color: var(--fg); }
+.tab-btn.active { color: var(--fg); border-bottom-color: var(--fg); }
+
+/* ── Artifact viewer ──────────────────────────────────────────────────── */
+.artifact-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  min-height: 360px;
+}
+
+.artifact-tree {
+  border-right: 0.5px solid var(--border);
+  padding-right: 12px;
+  overflow-y: auto;
+  max-height: 440px;
+}
+
+.artifact-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.1s;
+  word-break: break-all;
+}
+
+.artifact-tree-item:hover { background: var(--surface); color: var(--fg); }
+.artifact-tree-item.selected { background: var(--surface-2); color: var(--fg); font-weight: 500; }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .split-panel { grid-template-columns: 1fr; }
+  .split-panel-sidebar {
+    border-right: none;
+    border-bottom: 0.5px solid var(--border);
+    max-height: 200px;
+    padding-right: 0;
+    padding-bottom: 12px;
+  }
+  .artifact-layout { grid-template-columns: 1fr; }
+  .artifact-tree { border-right: none; border-bottom: 0.5px solid var(--border); max-height: 180px; }
+  .card-wide { padding: 20px 16px; }
+}

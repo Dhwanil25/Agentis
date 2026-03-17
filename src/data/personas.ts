@@ -79,4 +79,43 @@ export const PERSONAS: Persona[] = [
       'Write a cold email to a potential Salesforce VP advisor',
     ],
   },
+  {
+    id: 'senior-dev',
+    label: 'Senior Engineer',
+    icon: '⚡',
+    description: 'Production systems, architecture, scale',
+    skills: ['planner', 'coder', 'reviewer', 'security-auditor'],
+    suggestions: [
+      'Design a rate-limiting system for a multi-tenant API at 100k req/s',
+      'Implement a distributed job queue with at-least-once delivery guarantees',
+      'Build a real-time collaboration feature using CRDTs and WebSockets',
+      'Refactor a monolith into microservices without downtime',
+    ],
+  },
+  {
+    id: 'api-engineer',
+    label: 'API Engineer',
+    icon: '⚙️',
+    description: 'REST, GraphQL, SDKs, API design',
+    skills: ['planner', 'api-designer', 'coder', 'tester'],
+    suggestions: [
+      'Design a versioned REST API for a B2B SaaS with webhook support',
+      'Build a GraphQL API with subscriptions and DataLoader batching',
+      'Create a TypeScript SDK for a REST API with full type safety',
+      'Design a public API with pagination, filtering, and rate limiting',
+    ],
+  },
+  {
+    id: 'platform-eng',
+    label: 'Platform Engineer',
+    icon: '🏗️',
+    description: 'Infrastructure, CI/CD, observability, reliability',
+    skills: ['planner', 'devops', 'security-auditor', 'documenter'],
+    suggestions: [
+      'Design a zero-downtime deployment pipeline with blue-green deployments',
+      'Set up a full observability stack: metrics, traces, logs, alerting',
+      'Build a self-service infrastructure platform for application teams',
+      'Design a disaster recovery plan with RPO < 1min and RTO < 5min',
+    ],
+  },
 ]
