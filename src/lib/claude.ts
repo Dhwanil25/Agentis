@@ -1,5 +1,12 @@
 const API_URL = 'https://api.anthropic.com/v1/messages'
 
+export interface ToolEvent {
+  tool: string
+  label: string
+  input: string   // accumulated JSON arguments
+  done: boolean
+}
+
 export interface AgentStep {
   id: string
   skill: string
@@ -8,13 +15,18 @@ export interface AgentStep {
   thinking: string
   output: string
   status: 'pending' | 'running' | 'done' | 'error'
+  toolLog: ToolEvent[]          // live tool call history
 }
 
 export interface StreamChunk {
   type: 'step_start' | 'step_stream' | 'step_done' | 'all_done' | 'error'
+       | 'step_tool_start' | 'step_tool_input' | 'step_tool_done' | 'step_thinking'
   stepId?: string
   delta?: string
   error?: string
+  tool?: string    // tool name for step_tool_start
+  input?: string   // argument fragment for step_tool_input
+  thinking?: string
 }
 
 const SKILL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -35,34 +47,34 @@ export function buildPipeline(task: string, personaId: string): AgentStep[] {
 
   if (personaId === 'dev') {
     const steps: AgentStep[] = [
-      { id: 'plan',   skill: 'Planner',    skillColor: SKILL_COLORS.Planner,    title: 'Understand & plan',      thinking: 'Breaking the task into clear subtasks and deciding the approach...', output: '', status: 'pending' },
-      { id: 'arch',   skill: 'Architect',  skillColor: SKILL_COLORS.Architect,  title: 'Design architecture',    thinking: 'Designing file structure, data flow, and component boundaries...',    output: '', status: 'pending' },
-      { id: 'code',   skill: 'Coder',      skillColor: SKILL_COLORS.Coder,      title: 'Write code',             thinking: 'Writing production-quality code with proper error handling...',        output: '', status: 'pending' },
+      { id: 'plan',   skill: 'Planner',    skillColor: SKILL_COLORS.Planner,    title: 'Understand & plan',      thinking: 'Breaking the task into clear subtasks and deciding the approach...', output: '', status: 'pending', toolLog: [] },
+      { id: 'arch',   skill: 'Architect',  skillColor: SKILL_COLORS.Architect,  title: 'Design architecture',    thinking: 'Designing file structure, data flow, and component boundaries...',    output: '', status: 'pending', toolLog: [] },
+      { id: 'code',   skill: 'Coder',      skillColor: SKILL_COLORS.Coder,      title: 'Write code',             thinking: 'Writing production-quality code with proper error handling...',        output: '', status: 'pending', toolLog: [] },
     ]
     if (t.match(/test|unit|spec|jest|vitest/)) {
-      steps.push({ id: 'test', skill: 'Tester', skillColor: SKILL_COLORS.Tester, title: 'Write tests', thinking: 'Writing comprehensive test cases covering happy path and edge cases...', output: '', status: 'pending' })
+      steps.push({ id: 'test', skill: 'Tester', skillColor: SKILL_COLORS.Tester, title: 'Write tests', thinking: 'Writing comprehensive test cases covering happy path and edge cases...', output: '', status: 'pending', toolLog: [] })
     }
-    steps.push({ id: 'review', skill: 'Reviewer',   skillColor: SKILL_COLORS.Reviewer,   title: 'Review & improve', thinking: 'Checking for bugs, performance issues, and security vulnerabilities...', output: '', status: 'pending' })
-    steps.push({ id: 'docs',   skill: 'Documenter', skillColor: SKILL_COLORS.Documenter, title: 'Document',         thinking: 'Writing usage docs, API reference, and inline comments...',            output: '', status: 'pending' })
+    steps.push({ id: 'review', skill: 'Reviewer',   skillColor: SKILL_COLORS.Reviewer,   title: 'Review & improve', thinking: 'Checking for bugs, performance issues, and security vulnerabilities...', output: '', status: 'pending', toolLog: [] })
+    steps.push({ id: 'docs',   skill: 'Documenter', skillColor: SKILL_COLORS.Documenter, title: 'Document',         thinking: 'Writing usage docs, API reference, and inline comments...',            output: '', status: 'pending', toolLog: [] })
     return steps
   }
 
   if (personaId === 'writer') return [
-    { id: 'plan',  skill: 'Planner', skillColor: SKILL_COLORS.Planner, title: 'Plan structure', thinking: 'Outlining the content structure and key messages...', output: '', status: 'pending' },
-    { id: 'draft', skill: 'Writer',  skillColor: SKILL_COLORS.Writer,  title: 'Draft content',  thinking: 'Writing the first complete draft...',                  output: '', status: 'pending' },
-    { id: 'edit',  skill: 'Editor',  skillColor: SKILL_COLORS.Editor,  title: 'Edit & refine',  thinking: 'Tightening prose, improving flow and clarity...',       output: '', status: 'pending' },
+    { id: 'plan',  skill: 'Planner', skillColor: SKILL_COLORS.Planner, title: 'Plan structure', thinking: 'Outlining the content structure and key messages...', output: '', status: 'pending', toolLog: [] },
+    { id: 'draft', skill: 'Writer',  skillColor: SKILL_COLORS.Writer,  title: 'Draft content',  thinking: 'Writing the first complete draft...',                  output: '', status: 'pending', toolLog: [] },
+    { id: 'edit',  skill: 'Editor',  skillColor: SKILL_COLORS.Editor,  title: 'Edit & refine',  thinking: 'Tightening prose, improving flow and clarity...',       output: '', status: 'pending', toolLog: [] },
   ]
 
   if (personaId === 'analyst') return [
-    { id: 'plan',     skill: 'Planner',    skillColor: SKILL_COLORS.Planner,    title: 'Define scope',       thinking: 'Identifying what to analyse and how to structure it...', output: '', status: 'pending' },
-    { id: 'research', skill: 'Researcher', skillColor: SKILL_COLORS.Researcher, title: 'Research & gather',  thinking: 'Pulling together relevant frameworks and data...',         output: '', status: 'pending' },
-    { id: 'analyse',  skill: 'Analyst',    skillColor: SKILL_COLORS.Analyst,    title: 'Analyse & structure',thinking: 'Building structured analysis with insights...',             output: '', status: 'pending' },
+    { id: 'plan',     skill: 'Planner',    skillColor: SKILL_COLORS.Planner,    title: 'Define scope',       thinking: 'Identifying what to analyse and how to structure it...', output: '', status: 'pending', toolLog: [] },
+    { id: 'research', skill: 'Researcher', skillColor: SKILL_COLORS.Researcher, title: 'Research & gather',  thinking: 'Pulling together relevant frameworks and data...',         output: '', status: 'pending', toolLog: [] },
+    { id: 'analyse',  skill: 'Analyst',    skillColor: SKILL_COLORS.Analyst,    title: 'Analyse & structure',thinking: 'Building structured analysis with insights...',             output: '', status: 'pending', toolLog: [] },
   ]
 
   return [
-    { id: 'plan',    skill: 'Planner',  skillColor: SKILL_COLORS.Planner,  title: 'Plan',    thinking: 'Planning the approach...',        output: '', status: 'pending' },
-    { id: 'execute', skill: 'Writer',   skillColor: SKILL_COLORS.Writer,   title: 'Execute', thinking: 'Executing the task...',            output: '', status: 'pending' },
-    { id: 'review',  skill: 'Reviewer', skillColor: SKILL_COLORS.Reviewer, title: 'Review',  thinking: 'Reviewing and polishing output...', output: '', status: 'pending' },
+    { id: 'plan',    skill: 'Planner',  skillColor: SKILL_COLORS.Planner,  title: 'Plan',    thinking: 'Planning the approach...',        output: '', status: 'pending', toolLog: [] },
+    { id: 'execute', skill: 'Writer',   skillColor: SKILL_COLORS.Writer,   title: 'Execute', thinking: 'Executing the task...',            output: '', status: 'pending', toolLog: [] },
+    { id: 'review',  skill: 'Reviewer', skillColor: SKILL_COLORS.Reviewer, title: 'Review',  thinking: 'Reviewing and polishing output...', output: '', status: 'pending', toolLog: [] },
   ]
 }
 

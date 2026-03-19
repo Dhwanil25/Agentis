@@ -5,6 +5,7 @@ import type { Persona } from '@/types'
 import { ArtifactViewer } from './ArtifactViewer'
 import { downloadArtifactBundle } from '@/lib/download'
 import { downloadWorkflowJobZip } from '@/lib/exportJob'
+import { exportWorkflowToOpenFang } from '@/lib/exportOpenFang'
 
 type Tab = 'files' | 'trace' | 'summary'
 
@@ -15,13 +16,17 @@ interface Props {
   persona: Persona
   templateId: string
   highlightExport?: boolean
+  openfangUrl?: string
   onReset: () => void
 }
 
-export function OutputScreen({ nodes, artifacts, task, persona, templateId, highlightExport, onReset }: Props) {
+export function OutputScreen({ nodes, artifacts, task, persona, templateId, highlightExport, openfangUrl, onReset }: Props) {
   const [tab, setTab] = useState<Tab>(artifacts.length > 0 ? 'files' : 'trace')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportingOpenFang, setExportingOpenFang] = useState(false)
+  const [openFangStatus, setOpenFangStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [openFangError, setOpenFangError] = useState<string | null>(null)
 
   const totalWords = nodes.reduce((sum, n) => sum + (n.output ? n.output.split(/\s+/).filter(Boolean).length : 0), 0)
 
@@ -35,6 +40,22 @@ export function OutputScreen({ nodes, artifacts, task, persona, templateId, high
       await downloadWorkflowJobZip(task, persona, nodes, artifacts, templateId)
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleOpenFangExport = async () => {
+    if (!openfangUrl) return
+    setExportingOpenFang(true)
+    setOpenFangStatus('idle')
+    setOpenFangError(null)
+    try {
+      await exportWorkflowToOpenFang(task, persona, nodes, templateId, openfangUrl)
+      setOpenFangStatus('success')
+    } catch (err) {
+      setOpenFangStatus('error')
+      setOpenFangError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setExportingOpenFang(false)
     }
   }
 
@@ -237,36 +258,72 @@ export function OutputScreen({ nodes, artifacts, task, persona, templateId, high
       {/* Bottom bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, flexWrap: 'wrap', gap: 10 }}>
         <button className="btn-secondary" onClick={onReset}>Start over</button>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          style={{
-            padding: highlightExport ? '11px 22px' : '9px 18px',
-            borderRadius: 10,
-            border: highlightExport ? '1.5px solid #0F6E56' : '0.5px solid #0F6E56',
-            background: highlightExport ? '#1D9E75' : '#E1F5EE',
-            color: highlightExport ? '#fff' : '#085041',
-            fontSize: highlightExport ? 14 : 13,
-            fontWeight: 600,
-            cursor: exporting ? 'not-allowed' : 'pointer',
-            opacity: exporting ? 0.6 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            boxShadow: highlightExport ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none',
-          }}
-        >
-          {exporting ? 'Packaging…' : highlightExport ? '↓ Export to Claude Code' : '↓ Export to Claude Code'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {openfangUrl && (
+            <button
+              onClick={handleOpenFangExport}
+              disabled={exportingOpenFang}
+              style={{
+                padding: '9px 18px', borderRadius: 10,
+                border: '1.5px solid #1D9E75',
+                background: openFangStatus === 'success' ? '#1D9E75' : 'rgba(29,158,117,0.1)',
+                color: openFangStatus === 'success' ? '#fff' : '#1D9E75',
+                fontSize: 13, fontWeight: 600,
+                cursor: exportingOpenFang ? 'not-allowed' : 'pointer',
+                opacity: exportingOpenFang ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', gap: 6,
+                boxShadow: '0 0 0 3px rgba(29,158,117,0.12)',
+              }}
+            >
+              {exportingOpenFang ? 'Sending...' : openFangStatus === 'success' ? 'Sent to Engine' : 'Send to Agentis Engine'}
+            </button>
+          )}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            style={{
+              padding: highlightExport ? '11px 22px' : '9px 18px',
+              borderRadius: 10,
+              border: highlightExport ? '1.5px solid #0F6E56' : '0.5px solid #0F6E56',
+              background: highlightExport ? '#1D9E75' : 'rgba(29,158,117,0.08)',
+              color: highlightExport ? '#fff' : '#085041',
+              fontSize: highlightExport ? 14 : 13,
+              fontWeight: 600,
+              cursor: exporting ? 'not-allowed' : 'pointer',
+              opacity: exporting ? 0.6 : 1,
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: highlightExport ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none',
+            }}
+          >
+            {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
+          </button>
+        </div>
       </div>
 
+      {openFangStatus === 'error' && openFangError && (
+        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(220,38,38,0.08)', border: '0.5px solid rgba(220,38,38,0.3)', fontSize: 12, color: '#dc2626' }}>
+          Engine error: {openFangError}
+        </div>
+      )}
+
       {/* Export instructions */}
-      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--surface)', border: '0.5px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
-        <strong style={{ color: 'var(--fg)', fontWeight: 500 }}>How to use:</strong>
-        {' '}Download the zip → unzip into your repo root → run{' '}
-        <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-2, #f3f4f6)', padding: '1px 5px', borderRadius: 4 }}>bash agentis-job/execute.sh</code>
-        {' '}→ Claude Code reads the plan, places the files, runs tests, and opens a PR.
-      </div>
+      {!openfangUrl && (
+        <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--surface)', border: '0.5px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+          <strong style={{ color: 'var(--fg)', fontWeight: 500 }}>How to use:</strong>
+          {' '}Download the zip → unzip into your repo root → run{' '}
+          <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-2, #f3f4f6)', padding: '1px 5px', borderRadius: 4 }}>bash agentis-job/execute.sh</code>
+          {' '}→ Claude Code reads the plan, places the files, runs tests, and opens a PR.
+        </div>
+      )}
+
+      {openfangUrl && openFangStatus !== 'success' && (
+        <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(29,158,117,0.06)', border: '0.5px solid rgba(29,158,117,0.2)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+          <strong style={{ color: '#1D9E75', fontWeight: 500 }}>Agentis Engine:</strong>
+          {' '}Send this workflow to the local engine at{' '}
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{openfangUrl}</code>
+          {' '}for autonomous scheduled execution.
+        </div>
+      )}
     </div>
   )
 }

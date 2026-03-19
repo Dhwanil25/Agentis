@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agentis — Architecture Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d0f14;
+    color: #e2e8f0;
+    padding: 40px 32px 80px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 48px; }
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #475569; margin-bottom: 12px; margin-top: 40px;
+  }
+
+  /* ── Grid layouts ────────────────────────────── */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-auto { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* ── Cards ───────────────────────────────────── */
+  .card {
+    background: #151821; border: 1px solid #1e2433;
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .card-sm { border-radius: 8px; padding: 12px 14px; }
+  .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .card p  { font-size: 12px; color: #64748b; line-height: 1.6; }
+
+  /* ── Colours ─────────────────────────────────── */
+  .blue   { border-color: #1d4ed8; background: #0f1b35; }
+  .green  { border-color: #059669; background: #071c14; }
+  .purple { border-color: #7c3aed; background: #130e28; }
+  .orange { border-color: #d97706; background: #1d1206; }
+  .red    { border-color: #dc2626; background: #1c0909; }
+  .slate  { border-color: #334155; background: #111827; }
+  .teal   { border-color: #0d9488; background: #071714; }
+
+  .accent-blue   { color: #60a5fa; }
+  .accent-green  { color: #34d399; }
+  .accent-purple { color: #a78bfa; }
+  .accent-orange { color: #fbbf24; }
+  .accent-red    { color: #f87171; }
+  .accent-teal   { color: #2dd4bf; }
+
+  /* ── Arrow ───────────────────────────────────── */
+  .arrow {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #334155; padding: 0 4px;
+  }
+  .flow-row { display: flex; align-items: stretch; gap: 0; }
+  .flow-step {
+    flex: 1; background: #151821; border: 1px solid #1e2433;
+    border-radius: 10px; padding: 14px 16px; position: relative;
+  }
+  .flow-step .step-num {
+    font-size: 10px; font-weight: 700; color: #475569;
+    letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+  .flow-step h3 { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .flow-step p  { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+  /* ── Skill pill ──────────────────────────────── */
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 500; border: 1px solid;
+  }
+
+  /* ── Execution path cards ────────────────────── */
+  .exec-card {
+    background: #151821; border: 1px solid #1e2433; border-radius: 12px; padding: 20px;
+  }
+  .exec-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .exec-card .tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 10px;
+    letter-spacing: 0.04em;
+  }
+  .node-chain { display: flex; flex-direction: column; gap: 6px; }
+  .node { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .node-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .node-label { flex: 1; }
+  .node-deps { font-size: 10px; color: #475569; }
+
+  /* ── Table ───────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 12px; color: #475569; font-weight: 600;
+       font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+       border-bottom: 1px solid #1e2433; }
+  td { padding: 8px 12px; border-bottom: 1px solid #0f1520; color: #cbd5e1; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #0f1520; }
+
+  /* ── Divider ─────────────────────────────────── */
+  hr { border: none; border-top: 1px solid #1e2433; margin: 40px 0; }
+
+  /* ── Persona card ────────────────────────────── */
+  .persona { background: #151821; border: 1px solid #1e2433; border-radius: 10px;
+             padding: 14px 16px; }
+  .persona .icon { font-size: 18px; margin-bottom: 6px; font-family: monospace; }
+  .persona h4 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .persona p { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+  .persona .skills { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* ── Mermaid-like DAG box ────────────────────── */
+  .dag-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 6px; }
+  .dag-node {
+    background: #151821; border: 1px solid #334155; border-radius: 8px;
+    padding: 6px 14px; font-size: 11px; font-weight: 500; text-align: center;
+    min-width: 90px;
+  }
+  .dag-connector { width: 100%; display: flex; justify-content: center; color: #334155; font-size: 14px; margin: 2px 0; }
+
+  .top-label { font-size: 10px; color: #475569; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Agentis — Architecture Map</h1>
+<p class="subtitle">React 18 · TypeScript · Vite · Claude API (claude-sonnet-4-20250514) · Vercel</p>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 1. CORE IDEA                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">Core concept</div>
+<div class="card" style="max-width:760px">
+  <h2>What Agentis does</h2>
+  <p style="font-size:13px; color:#94a3b8; line-height:1.8; margin-top:8px">
+    Agentis is a <strong style="color:#e2e8f0">skill-orchestration layer</strong> on top of the Claude API.
+    Instead of sending one monolithic prompt, it chains multiple specialised "skill" sub-prompts
+    in sequence (or as a DAG), so the model behaves like a team of experts rather than a generic chatbot.
+    The core idea comes from <em>obra/superpowers</em>: small, composable, opinionated skills stacked
+    together produce dramatically better output.
+  </p>
+  <p style="font-size:12px; color:#475569; margin-top:12px; font-family:monospace">
+    User picks persona → Mode chosen → Skill graph assembled → Claude API called per skill → Output rendered → Export
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 2. USER FLOW                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">User journey (all steps)</div>
+<div class="flow-row">
+  <div class="flow-step blue">
+    <div class="step-num">STEP 0</div>
+    <h3 class="accent-blue">API Key Gate</h3>
+    <p>User enters Anthropic API key (or set via VITE_ANTHROPIC_API_KEY env var). Stored in memory only.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step slate">
+    <div class="step-num">STEP 0.5</div>
+    <h3>Plugin Select</h3>
+    <p>Chooses execution plugin: <strong>Web</strong>, <strong>Claude Code</strong>, or <strong>OpenFang</strong>.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step purple">
+    <div class="step-num">STEP 1</div>
+    <h3 class="accent-purple">Persona</h3>
+    <p>Picks a role (Developer, Writer, Analyst…). Each persona pre-loads a skill set.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step orange">
+    <div class="step-num">STEP 2</div>
+    <h3 class="accent-orange">Mode</h3>
+    <p>Chooses <strong>Freeform</strong> (custom task + skill graph) or <strong>Template</strong> (pre-built workflow).</p>
+  </div>
+</div>
+
+<div style="height:12px"></div>
+
+<div class="flow-row">
+  <div class="flow-step green">
+    <div class="step-num">STEP 3a — FREEFORM</div>
+    <h3 class="accent-green">Task Entry → Skill Graph</h3>
+    <p>User writes task. Skill graph shown. Skills come from persona. Claude API called for each skill sequentially.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step teal">
+    <div class="step-num">STEP 3b — TEMPLATE</div>
+    <h3 class="accent-teal">Template Browser → Preview</h3>
+    <p>User picks a workflow template. Sees the DAG of nodes. Enters task. Engine runs nodes in parallel where dependencies allow.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step red">
+    <div class="step-num">STEP 3c — OPENFANG</div>
+    <h3 class="accent-red">OpenFang Execution</h3>
+    <p>Skips local skill graph. Routes task to OpenFang agent service (localhost:4200). Streams results back.</p>
+  </div>
+</div>
+
+<div style="height:12px"></div>
+
+<div class="flow-row">
+  <div class="flow-step" style="max-width:340px">
+    <div class="step-num">STEP 4</div>
+    <h3>Execute Screen</h3>
+    <p>Live streaming output. Progress bar. Each step expands to show streamed text. Word count shown.</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step" style="max-width:340px">
+    <div class="step-num">STEP 5</div>
+    <h3>Output Screen</h3>
+    <p>Browse each skill's output by tab. View artifacts (code blocks, YAML, SQL, Markdown).</p>
+  </div>
+  <div class="arrow">→</div>
+  <div class="flow-step" style="max-width:340px">
+    <div class="step-num">EXPORT</div>
+    <h3>Export Options</h3>
+    <p><strong>Claude Code:</strong> downloads a ZIP with execute.sh + plan files.<br/>
+    <strong>OpenFang:</strong> POSTs job to OpenFang daemon.</p>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 3. EXECUTION ENGINES                                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">Execution engines (how skills are called)</div>
+<div class="grid-3">
+
+  <!-- Freeform engine -->
+  <div class="exec-card blue">
+    <div class="tag" style="background:#0f1b35; color:#60a5fa; border:1px solid #1d4ed8">FREEFORM · src/lib/claude.ts</div>
+    <h3 class="accent-blue">Serial Pipeline</h3>
+    <p style="font-size:11px; color:#64748b; margin-bottom:12px">
+      <code>buildPipeline()</code> selects steps by personaId. <code>runAgentStreaming()</code>
+      loops through steps in order, accumulating previous outputs as context for each next call.
+      Each step is one Claude API call with a skill system prompt.
+    </p>
+    <div class="node-chain">
+      <div class="node"><div class="node-dot" style="background:#60a5fa"></div><span class="node-label">Planner</span><span class="node-deps">→ context passed down →</span></div>
+      <div class="node"><div class="node-dot" style="background:#34d399"></div><span class="node-label">Architect / Writer / Researcher</span></div>
+      <div class="node"><div class="node-dot" style="background:#a78bfa"></div><span class="node-label">Coder / Analyst</span></div>
+      <div class="node"><div class="node-dot" style="background:#fbbf24"></div><span class="node-label">Reviewer / Editor</span></div>
+      <div class="node"><div class="node-dot" style="background:#2dd4bf"></div><span class="node-label">Documenter</span></div>
+    </div>
+  </div>
+
+  <!-- Template / DAG engine -->
+  <div class="exec-card teal">
+    <div class="tag" style="background:#071714; color:#2dd4bf; border:1px solid #0d9488">TEMPLATE · src/lib/engine.ts</div>
+    <h3 class="accent-teal">DAG Workflow Engine</h3>
+    <p style="font-size:11px; color:#64748b; margin-bottom:12px">
+      <code>runWorkflow()</code> resolves a dependency graph. Nodes whose <code>dependsOn[]</code>
+      are all satisfied run concurrently via <code>Promise.all()</code>. Critique nodes get the
+      output of their target via <code>critiques[]</code>.
+    </p>
+    <div class="node-chain">
+      <div class="node"><div class="node-dot" style="background:#2dd4bf"></div><span class="node-label">plan (no deps)</span><span class="node-deps">parallel</span></div>
+      <div class="node"><div class="node-dot" style="background:#2dd4bf"></div><span class="node-label">schema (no deps)</span></div>
+      <div class="node" style="margin-left:12px"><div class="node-dot" style="background:#60a5fa"></div><span class="node-label">api-design</span><span class="node-deps">← plan, schema</span></div>
+      <div class="node" style="margin-left:24px"><div class="node-dot" style="background:#a78bfa"></div><span class="node-label">code-routes / code-models / code-middleware</span><span class="node-deps">parallel</span></div>
+      <div class="node" style="margin-left:36px"><div class="node-dot" style="background:#fbbf24"></div><span class="node-label">critique → revise → docs / devops</span></div>
+    </div>
+  </div>
+
+  <!-- OpenFang engine -->
+  <div class="exec-card red">
+    <div class="tag" style="background:#1c0909; color:#f87171; border:1px solid #dc2626">OPENFANG · src/lib/openfang-runner.ts</div>
+    <h3 class="accent-red">External Agent Runtime</h3>
+    <p style="font-size:11px; color:#64748b; margin-bottom:12px">
+      <code>buildOpenFangPipeline()</code> creates a stub pipeline displayed in the UI.
+      <code>runOnOpenFangHand()</code> POSTs the task + personaId to the OpenFang daemon
+      at <code>localhost:4200</code>. Streams SSE events back and maps them to the same
+      step_start / step_stream / step_done / all_done chunk interface.
+    </p>
+    <div class="node-chain">
+      <div class="node"><div class="node-dot" style="background:#f87171"></div><span class="node-label">POST /hand → OpenFang daemon</span></div>
+      <div class="node"><div class="node-dot" style="background:#f87171"></div><span class="node-label">OpenFang routes to real Claude agent</span></div>
+      <div class="node"><div class="node-dot" style="background:#f87171"></div><span class="node-label">SSE stream → UI update</span></div>
+    </div>
+  </div>
+
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 4. DATA LAYER                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">Data layer</div>
+<div class="grid-3">
+
+  <div class="card">
+    <h2>Personas <span style="color:#475569; font-weight:400; font-size:12px">src/data/personas.ts</span></h2>
+    <p style="margin-bottom:12px">9 personas, each with a fixed skill array and suggested task prompts.</p>
+    <table>
+      <tr><th>Persona</th><th>Skills</th></tr>
+      <tr><td>Developer</td><td style="color:#94a3b8">planner, coder, reviewer</td></tr>
+      <tr><td>Writer</td><td style="color:#94a3b8">planner, writer, editor</td></tr>
+      <tr><td>Analyst</td><td style="color:#94a3b8">planner, analyst, researcher</td></tr>
+      <tr><td>Marketer</td><td style="color:#94a3b8">planner, writer, analyst</td></tr>
+      <tr><td>Student</td><td style="color:#94a3b8">planner, researcher, writer</td></tr>
+      <tr><td>Founder</td><td style="color:#94a3b8">planner, analyst, writer</td></tr>
+      <tr><td>Senior Engineer</td><td style="color:#94a3b8">planner, coder, reviewer, security-auditor</td></tr>
+      <tr><td>API Engineer</td><td style="color:#94a3b8">planner, api-designer, coder, tester</td></tr>
+      <tr><td>Platform Engineer</td><td style="color:#94a3b8">planner, devops, security-auditor, documenter</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Skills <span style="color:#475569; font-weight:400; font-size:12px">src/data/skills.ts + src/lib/prompts.ts</span></h2>
+    <p style="margin-bottom:12px">18 skills. Each has a label, description, colour token, and a system prompt function in <code>SKILL_PROMPTS</code>.</p>
+    <div class="grid-auto">
+      <span class="pill" style="background:#0f1b35; border-color:#1d4ed8; color:#60a5fa">Planner</span>
+      <span class="pill" style="background:#071c14; border-color:#059669; color:#34d399">Coder</span>
+      <span class="pill" style="background:#130e28; border-color:#7c3aed; color:#a78bfa">Reviewer</span>
+      <span class="pill" style="background:#1d1206; border-color:#d97706; color:#fbbf24">Writer</span>
+      <span class="pill" style="background:#1c1020; border-color:#9d174d; color:#f472b6">Editor</span>
+      <span class="pill" style="background:#1a0f06; border-color:#92400e; color:#fca5a5">Analyst</span>
+      <span class="pill" style="background:#071a0e; border-color:#3b6d11; color:#86efac">Researcher</span>
+      <span class="pill" style="background:#071714; border-color:#0d9488; color:#2dd4bf">API Designer</span>
+      <span class="pill" style="background:#1c0909; border-color:#dc2626; color:#f87171">Security Auditor</span>
+      <span class="pill" style="background:#130e28; border-color:#5b21b6; color:#c4b5fd">Critiquer</span>
+      <span class="pill" style="background:#071c14; border-color:#059669; color:#34d399">Reviser</span>
+      <span class="pill" style="background:#0f1520; border-color:#0369a1; color:#7dd3fc">Integrator</span>
+      <span class="pill" style="background:#0f1520; border-color:#0369a1; color:#7dd3fc">Scaffolder</span>
+      <span class="pill" style="background:#111111; border-color:#57534e; color:#a8a29e">Schema Designer</span>
+      <span class="pill" style="background:#0f1508; border-color:#65a30d; color:#bef264">DevOps</span>
+      <span class="pill" style="background:#071a0e; border-color:#3b6d11; color:#86efac">Documenter</span>
+      <span class="pill" style="background:#1d1206; border-color:#993c1d; color:#fdba74">Tester</span>
+      <span class="pill" style="background:#1d1206; border-color:#993c1d; color:#fdba74">Test Engineer</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Workflow Templates <span style="color:#475569; font-weight:400; font-size:12px">src/data/templates.ts</span></h2>
+    <p style="margin-bottom:12px">Pre-built DAG workflows. Each defines a list of <code>nodeDefinitions</code> with <code>dependsOn[]</code>, <code>critiques[]</code>, <code>parallelGroup</code>, <code>maxTokens</code>, and <code>temperature</code>.</p>
+    <table>
+      <tr><th>Template</th><th>Nodes</th><th>Est.</th></tr>
+      <tr><td>Build REST API</td><td>11</td><td>8 min</td></tr>
+      <tr><td>Generate Full App</td><td>13</td><td>12 min</td></tr>
+      <tr><td>Write Full Docs</td><td style="color:#64748b">—</td><td>6 min</td></tr>
+      <tr><td><em>+ more…</em></td><td></td><td></td></tr>
+    </table>
+    <p style="margin-top:10px; font-size:11px">Node types: <strong>planner → parallel impl → critiquer → reviser → integrator → docs/devops</strong></p>
+  </div>
+
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 5. STATE MACHINE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">App state machine — useAgent hook (src/hooks/useAgent.ts)</div>
+<div class="card" style="overflow-x:auto">
+  <p style="font-size:12px; color:#64748b; margin-bottom:16px">
+    All navigation and agent execution is managed by a single <code>useAgent(apiKey, openfangUrl?)</code> hook.
+    It holds an <code>AgentStateEx</code> object and exposes actions. No external state library is used.
+  </p>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px">
+    <div class="dag-node blue" style="background:#0f1b35; border-color:#1d4ed8; color:#93c5fd">persona</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node" style="background:#111827; border-color:#334155; color:#94a3b8">mode</div>
+    <span style="color:#334155">→ freeform →</span>
+    <div class="dag-node" style="background:#111827; border-color:#334155; color:#94a3b8">task</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node purple" style="background:#130e28; border-color:#7c3aed; color:#c4b5fd">graph</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node orange" style="background:#1d1206; border-color:#d97706; color:#fbbf24">execute</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node green" style="background:#071c14; border-color:#059669; color:#34d399">output</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; margin-top:10px">
+    <div class="dag-node" style="background:#111827; border-color:#334155; color:#94a3b8">mode</div>
+    <span style="color:#334155">→ template →</span>
+    <div class="dag-node teal" style="background:#071714; border-color:#0d9488; color:#2dd4bf">template</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node teal" style="background:#071714; border-color:#0d9488; color:#2dd4bf">preview</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node" style="background:#111827; border-color:#334155; color:#94a3b8">task</div>
+    <span style="color:#334155">→ executeWorkflow() →</span>
+    <div class="dag-node orange" style="background:#1d1206; border-color:#d97706; color:#fbbf24">execute</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node green" style="background:#071c14; border-color:#059669; color:#34d399">output</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; margin-top:10px">
+    <div class="dag-node" style="background:#111827; border-color:#334155; color:#94a3b8">task (OpenFang plugin)</div>
+    <span style="color:#334155">→ executeOnOpenFang() →</span>
+    <div class="dag-node red" style="background:#1c0909; border-color:#dc2626; color:#f87171">execute</div>
+    <span style="color:#334155">→</span>
+    <div class="dag-node green" style="background:#071c14; border-color:#059669; color:#34d399">output</div>
+  </div>
+
+  <div style="margin-top:20px">
+    <table>
+      <tr>
+        <th>Action</th><th>What it does</th>
+      </tr>
+      <tr><td><code>selectPersona(persona)</code></td><td>Sets persona + loads its skill array into <code>activeSkills</code></td></tr>
+      <tr><td><code>setMode('freeform'|'template')</code></td><td>Navigates to task or template step</td></tr>
+      <tr><td><code>selectTemplate(id)</code></td><td>Stores selected template ID</td></tr>
+      <tr><td><code>execute(task, personaId)</code></td><td>Freeform: builds serial pipeline, calls <code>runAgentStreaming()</code></td></tr>
+      <tr><td><code>executeWorkflow(task, templateId, personaId)</code></td><td>Template: builds WorkflowGraph, calls <code>runWorkflow()</code></td></tr>
+      <tr><td><code>executeOnOpenFang(task, personaId)</code></td><td>OpenFang: calls <code>runOnOpenFangHand()</code></td></tr>
+      <tr><td><code>reset()</code></td><td>Returns to initial state (step: 'persona')</td></tr>
+    </table>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 6. COMPONENT TREE                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">Component tree (src/components/)</div>
+<div class="grid-2">
+  <div class="card">
+    <h2>Screen components — one per step</h2>
+    <table>
+      <tr><th>Component</th><th>Step</th><th>Purpose</th></tr>
+      <tr><td>PersonaScreen</td><td>persona</td><td>Grid of persona cards; on select loads skills</td></tr>
+      <tr><td>ModeSelect</td><td>mode</td><td>Choose Freeform vs Template</td></tr>
+      <tr><td>TemplateBrowser</td><td>template</td><td>Browse & select workflow templates</td></tr>
+      <tr><td>WorkflowPreview</td><td>preview</td><td>Shows node DAG before execution</td></tr>
+      <tr><td>TaskScreen</td><td>task</td><td>Textarea with persona-specific suggestions</td></tr>
+      <tr><td>SkillGraphScreen</td><td>graph</td><td>Visual display of active skills (freeform only)</td></tr>
+      <tr><td>ExecuteScreen</td><td>execute (template)</td><td>DAG node progress with NodeCard components</td></tr>
+      <tr><td>OutputScreen</td><td>output (template)</td><td>ArtifactViewer per node; export buttons</td></tr>
+      <tr><td>PluginScreen</td><td>plugin select</td><td>Choose Web / Claude Code / OpenFang</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Shared / utility components</h2>
+    <table>
+      <tr><th>Component</th><th>Purpose</th></tr>
+      <tr><td>StepIndicator</td><td>Progress bar across the top of the card</td></tr>
+      <tr><td>SkillPill</td><td>Coloured badge for a skill label</td></tr>
+      <tr><td>NodeCard</td><td>Single workflow node with status, streaming output, expand/collapse</td></tr>
+      <tr><td>ArtifactViewer</td><td>Renders extracted code/yaml/sql blocks with copy button</td></tr>
+      <tr><td>ThreeBackground</td><td>Animated Three.js WebGL particle background (keySet = true)</td></tr>
+      <tr><td>ExecuteAndOutput</td><td>Legacy combined execute+output for very early freeform flow</td></tr>
+    </table>
+    <p style="margin-top:14px; font-size:11px; color:#475569">
+      Layout: <code>App.tsx</code> switches between <code>shell / shell-wide</code> and <code>card / card-wide</code>
+      CSS classes. Execute and output steps get wider layout. All other steps use the centred card layout.
+    </p>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 7. LIB LAYER                                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">Library layer (src/lib/)</div>
+<div class="grid-4">
+  <div class="card card-sm blue">
+    <h2 class="accent-blue">claude.ts</h2>
+    <p><code>buildPipeline()</code> — creates serial skill steps per persona.<br/>
+    <code>runAgentStreaming()</code> — calls Claude API once per skill, passes previous outputs as context, emits SSE-style chunks to UI.</p>
+  </div>
+  <div class="card card-sm teal">
+    <h2 class="accent-teal">engine.ts</h2>
+    <p><code>runWorkflow()</code> — resolves DAG, runs ready nodes concurrently, collects outputs, extracts artifacts, emits workflow events. Direct Claude API calls with streaming.</p>
+  </div>
+  <div class="card card-sm purple">
+    <h2 class="accent-purple">prompts.ts</h2>
+    <p><code>SKILL_PROMPTS</code> map — 18 skill prompt functions. Each takes (task, depsContext, critiqueContext) and returns {system, user}. <code>buildNodePrompt()</code> dispatches to these.</p>
+  </div>
+  <div class="card card-sm orange">
+    <h2 class="accent-orange">artifacts.ts</h2>
+    <p><code>extractArtifacts()</code> — parses markdown output for fenced code blocks and tags them as artifacts (code, yaml, sql, markdown). Used by OutputScreen / ArtifactViewer.</p>
+  </div>
+  <div class="card card-sm green">
+    <h2 class="accent-green">exportJob.ts</h2>
+    <p><code>downloadJobZip()</code> — packages skill outputs + execute.sh into a JSZip archive. User downloads it and runs it with Claude Code.</p>
+  </div>
+  <div class="card card-sm red">
+    <h2 class="accent-red">exportOpenFang.ts</h2>
+    <p><code>exportFreeformToOpenFang()</code> — POSTs freeform job to OpenFang daemon. Used in LegacyOutputScreen "Send to OpenFang" button.</p>
+  </div>
+  <div class="card card-sm slate">
+    <h2>openfang-runner.ts</h2>
+    <p><code>buildOpenFangPipeline()</code> + <code>runOnOpenFangHand()</code> — live execution path. Streams from OpenFang daemon and maps events to the standard chunk interface.</p>
+  </div>
+  <div class="card card-sm slate">
+    <h2>colors.ts</h2>
+    <p><code>SKILL_COLORS</code> map + <code>DEFAULT_SKILL_COLOR</code>. Maps skill name strings to {bg, border, text} CSS colour tokens. Used to colour nodes and pills consistently.</p>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 8. EXTERNAL INTEGRATIONS                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">External integrations &amp; deployment</div>
+<div class="grid-3">
+  <div class="card green">
+    <h2 class="accent-green">Anthropic Claude API</h2>
+    <p>Direct browser access via <code>anthropic-dangerous-direct-browser-access: true</code> header.
+    Model: <code>claude-sonnet-4-20250514</code>. Streaming via SSE (<code>stream: true</code>).
+    API key stored in React state only — never persisted.</p>
+  </div>
+  <div class="card red">
+    <h2 class="accent-red">OpenFang</h2>
+    <p>Local agent runtime at <code>localhost:4200</code>. Installed via <code>bin/openfang</code> + <code>install.sh</code>.
+    Dev script (<code>npm run dev</code>) starts both Vite and the OpenFang daemon concurrently via <code>scripts/openfang-daemon.mjs</code>.</p>
+  </div>
+  <div class="card slate">
+    <h2>Vercel Deployment</h2>
+    <p><code>vercel.json</code> config. <code>VITE_ANTHROPIC_API_KEY</code> env var.
+    If not set, app shows the key-entry screen at runtime — safe for public deployment.
+    <code>dist/</code> folder contains built output including landing page.</p>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- 9. KEY EXTENSION POINTS                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="section-label">How to extend</div>
+<div class="grid-3">
+  <div class="card">
+    <h2>Add a new Skill</h2>
+    <p style="margin-bottom:8px">1. Add entry to <code>SKILLS</code> in <code>src/data/skills.ts</code> with colour tokens.<br/>
+    2. Add a prompt function to <code>SKILL_PROMPTS</code> in <code>src/lib/prompts.ts</code>.<br/>
+    3. Reference the skill ID in a persona's <code>skills[]</code> array.</p>
+  </div>
+  <div class="card">
+    <h2>Add a new Persona</h2>
+    <p>Add an object to <code>PERSONAS</code> in <code>src/data/personas.ts</code> with an id, label, icon, description, <code>skills[]</code> array of skill IDs, and <code>suggestions[]</code> for task prompts.</p>
+  </div>
+  <div class="card">
+    <h2>Add a new Template</h2>
+    <p>Add a <code>WorkflowTemplate</code> to <code>WORKFLOW_TEMPLATES</code> in <code>src/data/templates.ts</code>.
+    Define <code>nodeDefinitions[]</code> with <code>dependsOn[]</code> for DAG edges, <code>critiques[]</code>
+    for adversarial review nodes, and <code>parallelGroup</code> for visual grouping.</p>
+  </div>
+</div>
+
+<p style="font-size:11px; color:#334155; margin-top:48px; text-align:center">
+  Generated by Claude · Agentis architecture map · March 2026
+</p>
+
+</body>
+</html>

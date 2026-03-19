@@ -1,62 +1,133 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAgent } from '@/hooks/useAgent'
-import { StepIndicator } from '@/components/StepIndicator'
-import { PersonaScreen } from '@/components/PersonaScreen'
-import { TaskScreen } from '@/components/TaskScreen'
-import { SkillGraphScreen } from '@/components/SkillGraphScreen'
-import { ModeSelect } from '@/components/ModeSelect'
-import { TemplateBrowser } from '@/components/TemplateBrowser'
-import { WorkflowPreview } from '@/components/WorkflowPreview'
-import { ExecuteScreen } from '@/components/ExecuteScreen'
-import { OutputScreen } from '@/components/OutputScreen'
-import { PluginScreen, type PluginId } from '@/components/PluginScreen'
-import { WORKFLOW_TEMPLATES } from '@/data/templates'
+import { Sidebar } from '@/components/Sidebar'
+import { ChatPage } from '@/components/pages/ChatPage'
+import { OverviewPage } from '@/components/pages/OverviewPage'
+import { AnalyticsPage } from '@/components/pages/AnalyticsPage'
+import { LogsPage } from '@/components/pages/LogsPage'
+import { SessionsPage } from '@/components/pages/SessionsPage'
+import { ApprovalsPage } from '@/components/pages/ApprovalsPage'
+import { CommsPage } from '@/components/pages/CommsPage'
+import { WorkflowsPage } from '@/components/pages/WorkflowsPage'
+import { SchedulerPage } from '@/components/pages/SchedulerPage'
+import { ChannelsPage } from '@/components/pages/ChannelsPage'
+import { SkillsPage } from '@/components/pages/SkillsPage'
+import { HandsPage } from '@/components/pages/HandsPage'
+import { SettingsPage } from '@/components/pages/SettingsPage'
+import { addHistoryEntry } from '@/components/DashboardScreen'
 
-// Wide layout kicks in for execute and output steps
-const WIDE_STEPS = new Set(['execute', 'output'])
+type Page =
+  | 'chat' | 'overview' | 'analytics' | 'logs' | 'sessions'
+  | 'approvals' | 'comms' | 'workflows' | 'scheduler'
+  | 'channels' | 'skills' | 'hands' | 'settings'
 
 export default function App() {
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY ?? '')
   const [keyInput, setKeyInput] = useState('')
   const [keySet, setKeySet] = useState(!!import.meta.env.VITE_ANTHROPIC_API_KEY)
-  const [activePlugin, setActivePlugin] = useState<PluginId | null>(
-    import.meta.env.VITE_ANTHROPIC_API_KEY ? 'web' : null
-  )
+  const [page, setPage] = useState<Page>('overview')
+  const [engineRunning, setEngineRunning] = useState(false)
+
+  // Poll engine status
+  useEffect(() => {
+    let active = true
+    const poll = async () => {
+      try {
+        const res = await fetch('/agentis/status', { signal: AbortSignal.timeout(2000) })
+        if (res.ok && active) {
+          const data = await res.json() as { state: string }
+          setEngineRunning(data.state === 'running')
+        }
+      } catch {
+        if (active) setEngineRunning(false)
+      }
+    }
+    poll()
+    const id = setInterval(poll, 3000)
+    return () => { active = false; clearInterval(id) }
+  }, [])
+
+  // Auto-send API key to engine when needed
+  useEffect(() => {
+    if (!apiKey.startsWith('sk-') || !engineRunning) return
+    fetch('/agentis/configure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey }),
+    }).catch(() => { /* silent */ })
+  }, [apiKey, engineRunning])
 
   const {
-    state,
-    setStep,
-    selectPersona,
-    setTask,
-    setMode,
-    selectTemplate,
+    state: agentState,
     execute,
     executeWorkflow,
+    executeOnOpenFang,
     reset,
   } = useAgent(apiKey)
 
-  const isWide = WIDE_STEPS.has(state.step)
-  const shellClass = isWide ? 'shell-wide' : 'shell'
-  const cardClass = isWide ? 'card-wide' : 'card'
+  // Record completed tasks to history
+  useEffect(() => {
+    if (agentState.step !== 'output' || !agentState.persona) return
+    addHistoryEntry({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      ts: Date.now(),
+      persona: agentState.persona.id,
+      task: agentState.task,
+      mode: agentState.mode ?? 'freeform',
+      status: agentState.error ? 'error' : 'completed',
+    })
+  }, [agentState.step]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedTemplate = state.templateId
-    ? WORKFLOW_TEMPLATES.find(t => t.id === state.templateId) ?? null
-    : null
+  const navigate = (p: string) => {
+    setPage(p as Page)
+    // Reset chat state when navigating away from chat
+    if (p !== 'chat') reset()
+  }
 
-  // ── API key gate ─────────────────────────────────────────────────────────
+  // ── API key gate ──────────────────────────────────────────────────────────────
   if (!keySet) {
     return (
-      <div className="shell">
-        <div className="card" style={{ maxWidth: 460 }}>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.02em', marginBottom: 6 }}>Agentis</div>
-            <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0 }}>
-              Enter your Anthropic API key to get started.{' '}
-              <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" style={{ color: 'var(--fg)' }}>
-                Get one here →
-              </a>
-            </p>
+      <div className="shell-center">
+        <div style={{
+          width: '100%',
+          maxWidth: 400,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: 28,
+        }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              background: 'var(--orange)',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>A</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '0.02em' }}>AGENTIS</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Multi-Agent AI Platform</div>
+            </div>
+            <span className="badge badge-orange" style={{ marginLeft: 'auto' }}>v0.1</span>
           </div>
+
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+            Enter your Anthropic API key to get started.{' '}
+            <a
+              href="https://console.anthropic.com"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'var(--orange)' }}
+            >
+              Get one here
+            </a>
+          </div>
+
           <input
             type="password"
             placeholder="sk-ant-..."
@@ -64,303 +135,105 @@ export default function App() {
             onChange={e => setKeyInput(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && keyInput.startsWith('sk-')) {
-                setApiKey(keyInput); setKeySet(true)
+                setApiKey(keyInput)
+                setKeySet(true)
               }
             }}
             style={{
-              width: '100%', boxSizing: 'border-box', padding: '10px 14px',
-              fontSize: 14, borderRadius: 10, border: '0.5px solid var(--border)',
-              background: 'var(--surface)', color: 'var(--fg)',
-              fontFamily: 'var(--font-mono)', marginBottom: 12, outline: 'none',
+              width: '100%',
+              marginBottom: 12,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 13,
             }}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              className="btn-primary"
-              disabled={!keyInput.startsWith('sk-')}
-              onClick={() => { setApiKey(keyInput); setKeySet(true) }}
-            >
-              Continue →
-            </button>
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 16, marginBottom: 0 }}>
-            Your key is stored in memory only. Never sent anywhere except directly to api.anthropic.com.
-          </p>
-        </div>
-      </div>
-    )
-  }
 
-  // ── Plugin selection (shown once after API key entry) ────────────────────
-  if (keySet && activePlugin === null) {
-    return (
-      <div className="shell">
-        <div className="card" style={{ maxWidth: 760 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-            <a href="/landing.html" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--fg)', textDecoration: 'none' }}>Agentis</a>
-          </div>
-          <PluginScreen onContinue={(plugin) => setActivePlugin(plugin)} />
-        </div>
-      </div>
-    )
-  }
-
-  // ── Main app ──────────────────────────────────────────────────────────────
-  return (
-    <div className={shellClass}>
-      <div className={cardClass}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-          <a href="/landing.html" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--fg)', textDecoration: 'none' }}>Agentis</a>
           <button
-            onClick={reset}
-            style={{ fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+            className="btn-primary"
+            disabled={!keyInput.startsWith('sk-')}
+            onClick={() => { setApiKey(keyInput); setKeySet(true) }}
+            style={{ width: '100%', padding: '10px', fontSize: 14 }}
           >
-            Reset
+            Continue
           </button>
-        </div>
 
-        <StepIndicator current={state.step} />
-
-        {/* ── Persona ── */}
-        {state.step === 'persona' && (
-          <PersonaScreen
-            selected={state.persona}
-            onSelect={selectPersona}
-            onNext={() => setStep('mode')}
-          />
-        )}
-
-        {/* ── Mode select ── */}
-        {state.step === 'mode' && (
-          <ModeSelect
-            onSelectTemplate={() => setMode('template')}
-            onSelectFreeform={() => setMode('freeform')}
-            onBack={() => setStep('persona')}
-          />
-        )}
-
-        {/* ── Template browser (template mode) ── */}
-        {state.step === 'template' && (
-          <TemplateBrowser
-            selected={state.templateId}
-            onSelect={selectTemplate}
-            onNext={() => setStep('preview')}
-            onBack={() => setStep('mode')}
-          />
-        )}
-
-        {/* ── Workflow preview ── */}
-        {state.step === 'preview' && selectedTemplate && (
-          <WorkflowPreview
-            template={selectedTemplate}
-            onRun={() => {
-              if (state.task.trim()) {
-                executeWorkflow(state.task, selectedTemplate.id, state.persona?.id ?? 'dev')
-              } else {
-                // No task yet — go to task screen first
-                setStep('task')
-              }
-            }}
-            onBack={() => setStep('template')}
-          />
-        )}
-
-        {/* ── Task entry (freeform mode or template task input) ── */}
-        {state.step === 'task' && state.persona && (
-          <TaskScreen
-            persona={state.persona}
-            task={state.task}
-            onTask={setTask}
-            onNext={() => {
-              if (state.mode === 'template' && selectedTemplate) {
-                executeWorkflow(state.task, selectedTemplate.id, state.persona!.id)
-              } else {
-                setStep('graph')
-              }
-            }}
-            onBack={() => setStep(state.mode === 'template' ? 'preview' : 'mode')}
-          />
-        )}
-
-        {/* ── Skill graph (freeform mode only) ── */}
-        {state.step === 'graph' && state.persona && (
-          <SkillGraphScreen
-            skillIds={state.activeSkills}
-            onNext={() => execute(state.task, state.persona!.id)}
-            onBack={() => setStep('task')}
-          />
-        )}
-
-        {/* ── Execute: template mode uses new ExecuteScreen, freeform uses old inline ── */}
-        {state.step === 'execute' && state.mode === 'template' && state.graph && (
-          <ExecuteScreen
-            nodes={state.graph.nodes}
-            loading={state.loading}
-            error={state.error}
-          />
-        )}
-
-        {state.step === 'execute' && state.mode !== 'template' && (
-          <LegacyExecuteScreen
-            pipeline={state.pipeline}
-            loading={state.loading}
-            error={state.error}
-          />
-        )}
-
-        {/* ── Output: template mode uses new OutputScreen, freeform uses old ── */}
-        {state.step === 'output' && state.mode === 'template' && state.graph && (
-          <OutputScreen
-            nodes={state.graph.nodes}
-            artifacts={state.allArtifacts}
-            task={state.task}
-            persona={state.persona!}
-            templateId={state.templateId ?? ''}
-            highlightExport={activePlugin === 'claude-code'}
-            onReset={reset}
-          />
-        )}
-
-        {state.step === 'output' && state.mode !== 'template' && (
-          <LegacyOutputScreen pipeline={state.pipeline} task={state.task} persona={state.persona!} highlightExport={activePlugin === 'claude-code'} onReset={reset} />
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── Legacy screens for freeform mode (preserve existing behaviour) ────────
-
-import type { PipelineStep } from '@/hooks/useAgent'
-import type { Persona } from '@/types'
-import { useRef, useEffect, useState as useLocalState } from 'react'
-import { downloadJobZip } from '@/lib/exportJob'
-
-function LegacyExecuteScreen({
-  pipeline,
-  loading,
-  error,
-}: {
-  pipeline: PipelineStep[]
-  loading: boolean
-  error: string | null
-}) {
-  const [expanded, setExpanded] = useLocalState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const running = pipeline.find(p => p.status === 'running')
-    if (running) setExpanded(running.id)
-  }, [pipeline])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [pipeline])
-
-  const doneSteps = pipeline.filter(p => p.status === 'done').length
-  const pct = pipeline.length > 0 ? Math.round((doneSteps / pipeline.length) * 100) : 0
-
-  return (
-    <div>
-      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 500, margin: 0 }}>
-            {loading ? 'Agent running…' : error ? 'Agent stopped' : 'Agent complete'}
-          </h2>
-          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{doneSteps}/{pipeline.length} steps</span>
-        </div>
-        <div style={{ height: 3, background: 'var(--surface)', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: error ? '#E24B4A' : '#1D9E75', borderRadius: 99, transition: 'width 0.4s ease' }} />
-        </div>
-      </div>
-      {error && (
-        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FCEBEB', border: '0.5px solid #F09595', color: '#A32D2D', fontSize: 13, marginBottom: 16 }}>
-          {error}
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {pipeline.map(step => {
-          const isExpanded = expanded === step.id
-          const isRunning = step.status === 'running'
-          const isDone = step.status === 'done'
-          const isPending = step.status === 'pending'
-          return (
-            <div key={step.id} style={{ border: `0.5px solid ${isRunning ? step.skillColor.border : 'var(--border)'}`, borderRadius: 12, overflow: 'hidden', background: isRunning ? step.skillColor.bg : 'var(--surface)', opacity: isPending ? 0.45 : 1 }}>
-              <button onClick={() => setExpanded(isExpanded ? null : step.id)} disabled={isPending} style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: isPending ? 'default' : 'pointer', textAlign: 'left' }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${isDone ? '#1D9E75' : isRunning ? step.skillColor.border : 'var(--border)'}`, background: isDone ? '#1D9E75' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 11, color: isDone ? '#fff' : isRunning ? step.skillColor.text : 'var(--muted)' }}>
-                  {isDone ? '✓' : isRunning ? '◌' : '○'}
-                </div>
-                <span style={{ padding: '2px 9px', borderRadius: 20, border: `0.5px solid ${step.skillColor.border}`, background: step.skillColor.bg, color: step.skillColor.text, fontSize: 11, fontWeight: 500 }}>{step.skill}</span>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)', flex: 1 }}>{step.title}</span>
-                {isRunning && <span style={{ fontSize: 12, color: step.skillColor.text, fontStyle: 'italic' }}>{step.thinking}</span>}
-                {isDone && step.output && <span style={{ fontSize: 11, color: 'var(--muted)' }}>{step.output.split(/\s+/).length} words</span>}
-                {(isDone || isRunning) && <span style={{ fontSize: 12, color: 'var(--muted)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>}
-              </button>
-              {isExpanded && (isDone || isRunning) && (
-                <div style={{ borderTop: `0.5px solid ${isRunning ? step.skillColor.border : 'var(--border)'}`, padding: '14px 16px', fontSize: 13, lineHeight: 1.75, fontFamily: 'var(--font-mono)', color: 'var(--fg)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 360, overflowY: 'auto', background: 'var(--bg)' }}>
-                  {step.output}
-                  {isRunning && <span style={{ display: 'inline-block', width: 8, height: 14, background: step.skillColor.border, marginLeft: 2, animation: 'blink 0.8s step-end infinite', verticalAlign: 'text-bottom' }} />}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <div ref={bottomRef} />
-    </div>
-  )
-}
-
-function LegacyOutputScreen({ pipeline, task, persona, highlightExport, onReset }: { pipeline: PipelineStep[]; task: string; persona: Persona; highlightExport?: boolean; onReset: () => void }) {
-  const [active, setActive] = useLocalState(pipeline[pipeline.length - 1]?.id ?? '')
-  const [exporting, setExporting] = useLocalState(false)
-  const activeStep = pipeline.find(p => p.id === active)
-
-  const handleExport = async () => {
-    setExporting(true)
-    try {
-      await downloadJobZip(task, persona, pipeline)
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  return (
-    <div>
-      <h2 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 6px' }}>Done</h2>
-      <p style={{ fontSize: 14, color: 'var(--muted)', margin: '0 0 20px' }}>{pipeline.length} skills ran in sequence. Browse each step below.</p>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {pipeline.map(step => (
-          <button key={step.id} onClick={() => setActive(step.id)} style={{ padding: '5px 12px', borderRadius: 20, border: `0.5px solid ${active === step.id ? step.skillColor.border : 'var(--border)'}`, background: active === step.id ? step.skillColor.bg : 'var(--surface)', color: active === step.id ? step.skillColor.text : 'var(--muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-            ✓ {step.skill}
-          </button>
-        ))}
-      </div>
-      {activeStep && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{activeStep.title}</div>
-          <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '18px 20px', fontSize: 13, lineHeight: 1.8, color: 'var(--fg)', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 420, overflowY: 'auto' }}>
-            {activeStep.output}
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 14, lineHeight: 1.6 }}>
+            Your key is stored in memory only and never sent to any third party.
           </div>
         </div>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, flexWrap: 'wrap', gap: 10 }}>
-        <button className="btn-secondary" onClick={onReset}>Start over</button>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          style={{ padding: highlightExport ? '11px 22px' : '9px 18px', borderRadius: 10, border: highlightExport ? '1.5px solid #0F6E56' : '0.5px solid #0F6E56', background: highlightExport ? '#1D9E75' : '#E1F5EE', color: highlightExport ? '#fff' : '#085041', fontSize: highlightExport ? 14 : 13, fontWeight: 600, cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6, boxShadow: highlightExport ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none' }}
-        >
-          {exporting ? 'Packaging…' : '↓ Export to Claude Code'}
-        </button>
       </div>
-      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--surface)', border: '0.5px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
-        <strong style={{ color: 'var(--fg)', fontWeight: 500 }}>How to use:</strong>
-        {' '}Download the zip → unzip into your repo root → run{' '}
-        <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-2, #f3f4f6)', padding: '1px 5px', borderRadius: 4 }}>bash agentis-job/execute.sh</code>
-        {' '}→ Claude Code reads the plan, places the files, runs tests, and opens a PR.
+    )
+  }
+
+  // ── Main dashboard layout ─────────────────────────────────────────────────────
+  return (
+    <div className="shell">
+      <Sidebar
+        current={page}
+        navigate={p => setPage(p as Page)}
+        engineRunning={engineRunning}
+      />
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {page === 'chat' && (
+          <ChatPage
+            apiKey={apiKey}
+            agentState={agentState}
+            engineRunning={engineRunning}
+            execute={execute}
+            executeOnOpenFang={executeOnOpenFang}
+            reset={reset}
+          />
+        )}
+
+        {page === 'overview' && (
+          <OverviewPage
+            apiKey={apiKey}
+            engineRunning={engineRunning}
+            navigate={navigate}
+          />
+        )}
+
+        {page === 'analytics' && <AnalyticsPage />}
+
+        {page === 'logs' && <LogsPage />}
+
+        {page === 'sessions' && (
+          <SessionsPage
+            engineRunning={engineRunning}
+            navigate={navigate}
+          />
+        )}
+
+        {page === 'approvals' && <ApprovalsPage />}
+
+        {page === 'comms' && <CommsPage engineRunning={engineRunning} />}
+
+        {page === 'workflows' && (
+          <WorkflowsPage
+            apiKey={apiKey}
+            agentState={agentState}
+            executeWorkflow={executeWorkflow}
+            reset={reset}
+          />
+        )}
+
+        {page === 'scheduler' && <SchedulerPage />}
+
+        {page === 'channels' && <ChannelsPage />}
+
+        {page === 'skills' && <SkillsPage />}
+
+        {page === 'hands' && <HandsPage />}
+
+        {page === 'settings' && (
+          <SettingsPage
+            apiKey={apiKey}
+            onApiKeyChange={key => {
+              setApiKey(key)
+              if (key.startsWith('sk-') && !keySet) setKeySet(true)
+            }}
+          />
+        )}
       </div>
     </div>
   )

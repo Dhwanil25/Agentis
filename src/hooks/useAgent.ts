@@ -6,6 +6,7 @@ import type { WorkflowGraph } from '@/types/workflow'
 import type { Artifact } from '@/types/artifacts'
 import { runWorkflow } from '@/lib/engine'
 import { SKILL_COLORS, DEFAULT_SKILL_COLOR } from '@/lib/colors'
+import { buildOpenFangPipeline, runOnOpenFangHand } from '@/lib/openfang-runner'
 
 export type { PipelineStep }
 
@@ -32,7 +33,7 @@ const initial: AgentStateEx = {
   allArtifacts: [],
 }
 
-export function useAgent(apiKey: string) {
+export function useAgent(apiKey: string, openfangUrl?: string) {
   const [state, setState] = useState<AgentStateEx>(initial)
 
   const setStep = useCallback((step: AgentState['step']) => {
@@ -230,7 +231,73 @@ export function useAgent(apiKey: string) {
     })
   }, [apiKey])
 
+  // ── OpenFang Hand execution ───────────────────────────────────────────────
+  const executeOnOpenFang = useCallback(async (task: string, personaId: string) => {
+    if (!task.trim() || !openfangUrl) return
+
+    const pipeline = buildOpenFangPipeline(personaId)
+    setState(s => ({ ...s, pipeline, loading: true, error: null, step: 'execute', mode: 'freeform' }))
+
+    await runOnOpenFangHand(task, personaId, openfangUrl, (chunk) => {
+      if (chunk.type === 'step_start') {
+        setState(s => ({
+          ...s,
+          pipeline: s.pipeline.map(p => p.id === chunk.stepId ? { ...p, status: 'running' } : p),
+        }))
+      } else if (chunk.type === 'step_stream') {
+        setState(s => ({
+          ...s,
+          pipeline: s.pipeline.map(p =>
+            p.id === chunk.stepId ? { ...p, output: p.output + (chunk.delta ?? '') } : p
+          ),
+        }))
+      } else if (chunk.type === 'step_tool_start') {
+        // New tool starting — update thinking label and add to log
+        setState(s => ({
+          ...s,
+          pipeline: s.pipeline.map(p =>
+            p.id === chunk.stepId ? {
+              ...p,
+              thinking: chunk.thinking ?? `Using ${chunk.tool}`,
+              toolLog: [...p.toolLog, { tool: chunk.tool ?? '', label: chunk.thinking ?? chunk.tool ?? '', input: '', done: false }],
+            } : p
+          ),
+        }))
+      } else if (chunk.type === 'step_tool_input') {
+        // Update the last tool entry with streamed arguments
+        setState(s => ({
+          ...s,
+          pipeline: s.pipeline.map(p => {
+            if (p.id !== chunk.stepId) return p
+            const log = [...p.toolLog]
+            if (log.length > 0) log[log.length - 1] = { ...log[log.length - 1], input: chunk.input ?? '' }
+            return { ...p, toolLog: log }
+          }),
+        }))
+      } else if (chunk.type === 'step_done') {
+        setState(s => ({
+          ...s,
+          pipeline: s.pipeline.map(p => p.id === chunk.stepId
+            ? { ...p, status: 'done', toolLog: p.toolLog.map(t => ({ ...t, done: true })) }
+            : p
+          ),
+        }))
+      } else if (chunk.type === 'all_done') {
+        setState(s => ({ ...s, loading: false, step: 'output' }))
+      } else if (chunk.type === 'error') {
+        setState(s => ({
+          ...s,
+          loading: false,
+          error: chunk.error ?? 'OpenFang execution failed',
+          pipeline: s.pipeline.map(p =>
+            p.id === chunk.stepId ? { ...p, status: 'error' } : p
+          ),
+        }))
+      }
+    })
+  }, [openfangUrl])
+
   const reset = useCallback(() => setState(initial), [])
 
-  return { state, setStep, selectPersona, setTask, setMode, selectTemplate, execute, executeWorkflow, reset }
+  return { state, setStep, selectPersona, setTask, setMode, selectTemplate, execute, executeWorkflow, executeOnOpenFang, reset }
 }
