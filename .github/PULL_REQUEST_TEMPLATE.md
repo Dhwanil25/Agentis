@@ -1,8 +1,16 @@
-## Summary
+## What does this PR do?
 
-<!-- What does this PR do? 1-3 sentences. -->
+<!--
+  A short summary (1–3 sentences). Focus on the "why", not just the "what".
+  The diff shows what changed — this should explain the reasoning.
+-->
 
 ## Related issue
+
+<!--
+  Link the issue this resolves. GitHub will auto-close it on merge.
+  Use: Closes #N
+-->
 
 Closes #
 
@@ -10,25 +18,43 @@ Closes #
 
 - [ ] Bug fix
 - [ ] New feature
-- [ ] Documentation update
+- [ ] Documentation
 - [ ] Refactor / cleanup
-- [ ] Other (describe below)
+- [ ] Performance improvement
+- [ ] Other — describe:
 
 ## How to test
 
-<!-- Step-by-step instructions to verify the change works. -->
+<!--
+  Step-by-step instructions for a reviewer to verify this works.
+  Be specific — assume the reviewer hasn't used this part of the app before.
+-->
 
 1.
 2.
 3.
 
-## Screenshots (if UI change)
+## Screenshots
 
-<!-- Before / after screenshots are very helpful for reviewers. -->
+<!--
+  Required for any UI change. Drag and drop before/after images here.
+  Not needed for pure logic / backend changes.
+-->
+
+| Before | After |
+|---|---|
+|  |  |
+
+## Notes for reviewers
+
+<!--
+  Anything the reviewer should know: tricky parts of the implementation,
+  known limitations, follow-up work left for future PRs, etc.
+-->
 
 ## Checklist
 
-- [ ] I've run `npm run lint` and there are no errors
-- [ ] I've tested the change locally
-- [ ] The Agent Universe still launches and completes a run
-- [ ] No API keys or secrets are included in the diff
+- [ ] `npm run lint` passes
+- [ ] Tested locally end-to-end (Agent Universe launches and completes)
+- [ ] No API keys, tokens, or secrets in the diff
+- [ ] Referenced the related issue above

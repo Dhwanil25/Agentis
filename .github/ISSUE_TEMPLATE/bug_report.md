@@ -1,40 +1,62 @@
 ---
 name: Bug Report
-about: Something isn't working as expected
-title: 'fix: '
+about: Something isn't working correctly
+title: "fix: "
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
-## Describe the bug
+<!--
+  Before opening a bug report:
+  1. Search existing issues: https://github.com/Dhwanil25/Agentis/issues
+  2. Make sure you're on the latest version (git pull && npm install)
+  3. Check the browser console (DevTools → Console) for error messages
+-->
 
-A clear and concise description of what the bug is.
+## What happened?
+
+<!-- A clear, concise description of the bug. -->
 
 ## Steps to reproduce
 
-1. Go to '...'
-2. Click on '...'
-3. See error
+<!-- The exact steps someone else can follow to reproduce the issue. -->
+
+1. Go to `...`
+2. Enter `...`
+3. Click `...`
+4. See error
 
 ## Expected behaviour
 
-What you expected to happen.
+<!-- What should have happened? -->
 
 ## Actual behaviour
 
-What actually happened. Include any error messages from the browser console (DevTools → Console).
+<!-- What actually happened? Paste any error messages or logs below. -->
 
-## Screenshots
+<details>
+<summary>Console output / stack trace</summary>
 
-If applicable, add screenshots to help explain the problem.
+```
+Paste error here
+```
+
+</details>
+
+## Screenshots or screen recording
+
+<!-- Drag and drop images here if they help illustrate the problem. -->
 
 ## Environment
 
-- **Browser:** [e.g. Chrome 124, Safari 17]
-- **OS:** [e.g. macOS 14, Windows 11]
-- **Agentis version:** [e.g. v0.2.0]
-- **Provider(s) being used:** [e.g. Anthropic + Groq]
+| Field | Value |
+|---|---|
+| Agentis version | e.g. v0.2.0 |
+| Browser | e.g. Chrome 124, Safari 17, Firefox 125 |
+| OS | e.g. macOS 14.4, Windows 11, Ubuntu 24.04 |
+| Providers configured | e.g. Anthropic + Groq |
+| Engine running? | Yes / No |
 
 ## Additional context
 
-Any other context about the problem.
+<!-- Anything else that might be relevant. -->

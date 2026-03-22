@@ -1,165 +1,206 @@
 # Contributing to Agentis
 
-👋 Thanks for your interest in contributing! Agentis is an open-source project and we welcome contributions of all kinds — bug fixes, new features, documentation, and ideas.
-
-Please take a moment to read this guide before opening an issue or submitting a pull request.
+We appreciate your interest in making Agentis better. This document covers everything you need to go from idea to merged pull request.
 
 ---
 
-## Table of Contents
+## Before You Start
 
-- [Code of Conduct](#code-of-conduct)
-- [Ways to Contribute](#ways-to-contribute)
-- [Reporting Bugs](#reporting-bugs)
-- [Requesting Features](#requesting-features)
-- [Your First Contribution](#your-first-contribution)
-- [Development Setup](#development-setup)
-- [Pull Request Guidelines](#pull-request-guidelines)
-- [Project Structure](#project-structure)
-- [Commit Style](#commit-style)
-
----
-
-## Code of Conduct
-
-Be kind. We're all here to build something great together. Disrespectful or exclusionary behaviour will not be tolerated.
+- **Search first.** Check [open issues](https://github.com/Dhwanil25/Agentis/issues) and [pull requests](https://github.com/Dhwanil25/Agentis/pulls) before starting work. Someone may already be on it.
+- **Open an issue first** for non-trivial changes. A quick discussion upfront saves everyone time.
+- **Small PRs merge faster.** If you're building something large, split it into stages.
 
 ---
 
 ## Ways to Contribute
 
-| Type | How |
-|---|---|
-| 🐛 Bug report | Open an issue using the Bug Report template |
-| 💡 Feature idea | Open an issue using the Feature Request template |
-| 🔧 Code contribution | Fork → branch → PR |
-| 📖 Documentation | Edit the README or add inline docs |
-| 🧪 Testing | Try things, report rough edges |
-| ⭐ Spread the word | Star the repo, share it |
-
----
-
-## Reporting Bugs
-
-Before opening a bug report:
-- Search [existing issues](https://github.com/Dhwanil25/Agentis/issues) to avoid duplicates
-- Check you're on the latest version (`git pull`)
-
-When reporting, include:
-- What you did
-- What you expected to happen
-- What actually happened
-- Browser + OS
-- Console errors (open DevTools → Console)
-
----
-
-## Requesting Features
-
-Before opening a feature request:
-- Check the [roadmap issues](https://github.com/Dhwanil25/Agentis/issues?q=label%3Aenhancement) — it may already be planned
-- If it's a large change, open a discussion first so we can align before you invest time
-
----
-
-## Your First Contribution
-
-New to open source? Start with issues labelled [`good first issue`](https://github.com/Dhwanil25/Agentis/issues?q=label%3A%22good+first+issue%22) — they're scoped to single files with clear instructions.
-
-Good starting points:
-- [#1 — Add more agent roles](https://github.com/Dhwanil25/Agentis/issues/1)
-- [#2 — Dark / light theme toggle](https://github.com/Dhwanil25/Agentis/issues/2)
-- [#3 — Keyboard shortcut to launch universe](https://github.com/Dhwanil25/Agentis/issues/3)
+| | What | How |
+|---|---|---|
+| 🐛 | Fix a bug | Open a [Bug Report](https://github.com/Dhwanil25/Agentis/issues/new?template=bug_report.md) |
+| 💡 | Propose a feature | Open a [Feature Request](https://github.com/Dhwanil25/Agentis/issues/new?template=feature_request.md) |
+| 🔧 | Write code | Fork → branch → PR |
+| 📖 | Improve docs | Edit README or inline comments |
+| 🌍 | Add a provider | See [Adding a Provider](#adding-a-provider) |
+| 🎨 | Add an agent role | See [Adding an Agent Role](#adding-an-agent-role) |
 
 ---
 
 ## Development Setup
 
+### Requirements
+
+- **Node.js** 18 or later
+- **npm** 9 or later
+- At least one LLM provider API key, or [Ollama](https://ollama.ai) running locally (free)
+
+### Steps
+
 ```bash
-# 1. Fork the repo on GitHub, then clone your fork
+# Fork the repo on GitHub, then:
 git clone https://github.com/YOUR_USERNAME/Agentis.git
 cd Agentis
 
-# 2. Install dependencies
 npm install
-
-# 3. Start the dev server
 npm run dev
-# → http://localhost:5173
-
-# 4. Create a branch for your change
-git checkout -b feat/my-feature
 ```
 
-You'll need at least one LLM API key to test the Agent Universe. Anthropic, OpenAI, Google, or a free local [Ollama](https://ollama.ai) setup all work.
+Open [http://localhost:5173](http://localhost:5173).
 
-### Lint before you push
+### Environment
 
 ```bash
-npm run lint
+# Optional — skips the API key gate on startup
+cp .env.example .env.local
+# Add: VITE_ANTHROPIC_API_KEY=sk-ant-...
+```
+
+---
+
+## Workflow
+
+```
+fork → clone → branch → commit → push → pull request
+```
+
+```bash
+# Always branch from main
+git checkout main && git pull
+git checkout -b fix/ollama-error-message
+
+# Make your changes, then:
+npm run lint          # must pass
+git add -p            # stage intentionally
+git commit -m "fix: show model name in ollama failover error"
+git push origin fix/ollama-error-message
+```
+
+Then open a PR against `main` on GitHub.
+
+---
+
+## Commit Convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org). This keeps the changelog clean and makes `git log` actually readable.
+
+```
+<type>: <short summary in present tense, lowercase>
+```
+
+| Type | When to use |
+|---|---|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `refactor` | Code change with no behaviour change |
+| `style` | Formatting, whitespace |
+| `perf` | Performance improvement |
+| `test` | Tests |
+| `chore` | Build, deps, config |
+
+**Examples**
+
+```
+feat: add designer and lawyer agent roles
+fix: ollama failover shows attempted model name
+docs: add provider setup guide to README
+refactor: extract streamWithFailover into separate module
 ```
 
 ---
 
 ## Pull Request Guidelines
 
-- **One PR per feature or fix** — keep changes focused
-- **Reference the issue** — include `Closes #N` in your PR description
-- **Test your change** — make sure the universe runs, the UI renders, no console errors
-- **Keep diffs clean** — avoid reformatting unrelated code
-- **Screenshots welcome** — for UI changes, before/after screenshots help a lot
+### Title
 
-### PR title format
+Follow the same convention as commits: `feat: add token cost tracker`
 
-```
-feat: add designer agent role
-fix: ollama failover shows model name in error
-docs: update provider table in README
-refactor: simplify executeWorkers signature
-```
+### Description
+
+Your PR description should answer:
+1. What does this change do?
+2. Why is it needed? (link the issue)
+3. How did you test it?
+4. Any screenshots for UI changes?
+
+### Checklist before submitting
+
+- [ ] `npm run lint` passes with no errors
+- [ ] The Agent Universe launches and completes a run end-to-end
+- [ ] No API keys, secrets, or personal data in the diff
+- [ ] New behaviour is covered by the description / screenshots
+
+### Review process
+
+- PRs are reviewed within a few days
+- We may request changes — this is normal, not a rejection
+- Once approved, a maintainer will merge
 
 ---
 
 ## Project Structure
 
 ```
-src/
-├── components/
-│   ├── pages/
-│   │   ├── UniversePage.tsx    # Multi-agent canvas — main feature
-│   │   ├── SettingsPage.tsx    # Providers, models, memory, migration
-│   │   └── ...                 # Other pages
-│   └── Sidebar.tsx
-├── lib/
-│   ├── multiAgentEngine.ts     # Core orchestration + streaming
-│   ├── memory.ts               # Persistent memory layer
-│   └── pb.ts                   # PocketBase integration (optional)
-└── hooks/
-    └── useAgent.ts             # Agent state machine
-
-vite-plugin-agentis.ts          # Engine daemon + /agentis/* endpoints
-vite.config.ts                  # 12 provider proxy routes
+agentis/
+├── src/
+│   ├── components/
+│   │   ├── pages/
+│   │   │   ├── UniversePage.tsx     ← multi-agent canvas (main feature)
+│   │   │   ├── SettingsPage.tsx     ← providers, models, memory, migration
+│   │   │   ├── ChatPage.tsx
+│   │   │   ├── WorkflowsPage.tsx
+│   │   │   └── ...
+│   │   └── Sidebar.tsx
+│   ├── lib/
+│   │   ├── multiAgentEngine.ts      ← orchestration, streaming, failover
+│   │   ├── memory.ts                ← localStorage + PocketBase memory
+│   │   └── pb.ts                   ← PocketBase integration
+│   └── hooks/
+│       └── useAgent.ts              ← agent state machine
+├── vite-plugin-agentis.ts           ← engine daemon + /agentis/* middleware
+├── vite.config.ts                   ← provider proxy routes
+└── public/
 ```
 
-The most impactful file is `src/lib/multiAgentEngine.ts` — understanding it unlocks most contributions.
+The most important file is `src/lib/multiAgentEngine.ts`. Understanding it unlocks most meaningful contributions.
 
 ---
 
-## Commit Style
+## Adding an Agent Role
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat:     new feature
-fix:      bug fix
-docs:     documentation only
-refactor: code change that doesn't fix a bug or add a feature
-style:    formatting, whitespace
-chore:    build, deps, config
-```
+1. Open `src/lib/multiAgentEngine.ts`
+2. Add your role to the `AgentRole` type:
+   ```ts
+   export type AgentRole = '...' | 'designer' | 'lawyer'
+   ```
+3. Add a colour to `ROLE_COLORS`:
+   ```ts
+   designer: '#ec4899',
+   lawyer:   '#6366f1',
+   ```
+The orchestrator automatically picks from all available roles — no other changes needed.
 
 ---
 
-## Questions?
+## Adding a Provider
 
-Open a [GitHub Discussion](https://github.com/Dhwanil25/Agentis/discussions) or drop a comment on any issue. We're happy to help.
+1. Add the provider ID to `LLMProvider` type in `multiAgentEngine.ts`
+2. Add entries to `PROVIDER_COLORS`, `PROVIDER_LABELS`, and `PROVIDER_MODELS`
+3. Add a streaming function (see `streamOpenAICompat` for the pattern — most providers are OpenAI-compatible)
+4. Add a Vite proxy route in `vite.config.ts`
+5. Add the provider entry to `PROVIDERS` array in `SettingsPage.tsx`
+
+---
+
+## Good First Issues
+
+If you're new to the codebase, these are well-scoped and clearly documented:
+
+- [#1 — Add more agent roles](https://github.com/Dhwanil25/Agentis/issues/1)
+- [#2 — Dark / light theme toggle](https://github.com/Dhwanil25/Agentis/issues/2)
+- [#3 — Keyboard shortcut to launch universe](https://github.com/Dhwanil25/Agentis/issues/3)
+
+---
+
+## Questions
+
+Open a [GitHub Discussion](https://github.com/Dhwanil25/Agentis/discussions) or comment on the relevant issue. We're happy to help you get oriented.

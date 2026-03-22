@@ -1,30 +1,59 @@
 ---
 name: Feature Request
-about: Suggest an idea or improvement for Agentis
-title: 'feat: '
+about: Propose a new feature or improvement
+title: "feat: "
 labels: enhancement
-assignees: ''
+assignees: ""
 ---
 
-## Problem / motivation
+<!--
+  Before opening a feature request:
+  1. Search existing issues and the roadmap: https://github.com/Dhwanil25/Agentis/issues?q=label%3Aenhancement
+  2. For large or architectural changes, consider starting a Discussion first
+-->
 
-Is your feature request related to a problem? Describe it clearly.
-e.g. *"I'm always frustrated when..."*
+## Problem statement
+
+<!--
+  What problem does this solve? Who experiences it?
+  e.g. "When running a universe with 8+ agents, there's no way to see the total
+  cost of the run before it completes, making it hard to budget API usage."
+-->
 
 ## Proposed solution
 
-A clear description of what you want to happen.
+<!-- Describe what you'd like to happen. Be as specific as possible. -->
+
+## Example / mockup
+
+<!--
+  If you have a sketch, screenshot, or written example of what this would look
+  like, add it here. Even a rough description of the UI helps.
+-->
 
 ## Alternatives considered
 
-Any alternative solutions or features you've considered.
+<!-- What other approaches did you think about? Why did you prefer this one? -->
 
-## Would you be willing to implement this?
+## Scope
 
-- [ ] Yes, I'd like to submit a PR for this
-- [ ] I can help with design / feedback but not implementation
-- [ ] Just suggesting — happy for someone else to pick it up
+<!--
+  How big is this change?
+  - Small: a few lines, one file
+  - Medium: new component or function, a few files
+  - Large: new page, changes to core engine, new provider
+-->
+
+- [ ] Small
+- [ ] Medium
+- [ ] Large
+
+## Would you like to implement this?
+
+- [ ] Yes — I'll submit a PR
+- [ ] I can help review / test but not implement
+- [ ] Just proposing — open for anyone to pick up
 
 ## Additional context
 
-Add any mockups, screenshots, or examples that help illustrate the idea.
+<!-- Links, prior art, related issues, anything else. -->
