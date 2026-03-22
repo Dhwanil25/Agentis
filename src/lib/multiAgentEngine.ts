@@ -815,7 +815,16 @@ Return ONLY valid JSON, no markdown:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser (only assign browser when the task explicitly needs live/real-time web data — current prices, today's news, live site content)
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser
+
+BROWSER ROLE RULES — assign role="browser" when the task involves ANY of:
+- Opening, visiting, or navigating to a specific URL or website
+- Fetching live/real-time data (today's news, current prices, trending repos, live scores)
+- Reading or extracting content from a website right now
+- Searching the web and reading the actual results pages
+- Checking what is currently on a webpage
+If the user says "go to", "open", "visit", "check", "browse", "navigate to", or names a URL — assign browser role.
+Do NOT assign browser for general knowledge questions that don't require live data.
 
 Rules:
 - Maximize parallel execution (minimize dependsOn chains)
@@ -849,6 +858,9 @@ Return ONLY valid JSON:
   ]
 }
 
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser
+Assign role="browser" when the follow-up involves opening a URL, visiting a website, or fetching live/real-time web content.
+
 Rules: new agent IDs start with "fu_", new agents can dependsOn existing IDs, spread across providers`
 }
 
@@ -862,15 +874,16 @@ function workerSystem(role: AgentRole, name: string, complexity: TaskComplexity,
   const tone = verbosity[complexity]
   const id = `${PROVIDER_LABELS[provider]}/${modelLabel}`
 
+  const noBrowser = 'IMPORTANT: You do NOT have browser or internet access. Do not attempt to browse websites, simulate web navigation, or pretend to fetch URLs. Work only from your training knowledge.'
   const prompts: Record<AgentRole, string> = {
     orchestrator: buildOrchestratorSystem([provider]),
-    planner:    `You are ${name}, a Planning Agent running on ${id}. Create actionable plans and structured breakdowns. ${tone} Plain text only.`,
-    researcher: `You are ${name}, a Research Agent running on ${id}. Gather accurate, well-organized information. ${tone} Plain text only.`,
-    analyst:    `You are ${name}, an Analysis Agent running on ${id}. Analyze data and context, identify patterns and insights. ${tone} Plain text only.`,
-    writer:     `You are ${name}, a Writing Agent running on ${id}. Produce clear professional prose with numbered sections. ${tone} Plain text only — no markdown.`,
-    coder:      `You are ${name}, a Code Agent running on ${id}. Write clean, well-commented, working code. ${tone} No markdown fences.`,
-    reviewer:   `You are ${name}, a Review Agent running on ${id}. Critically evaluate work, identify strengths, weaknesses, improvements. ${tone} Plain text only.`,
-    summarizer: `You are ${name}, a Summarizer Agent running on ${id}. Extract and condense the most important information. ${tone} Plain text only.`,
+    planner:    `You are ${name}, a Planning Agent running on ${id}. Create actionable plans and structured breakdowns. ${tone} Plain text only. ${noBrowser}`,
+    researcher: `You are ${name}, a Research Agent running on ${id}. Gather accurate, well-organized information from your training knowledge. ${tone} Plain text only. ${noBrowser}`,
+    analyst:    `You are ${name}, an Analysis Agent running on ${id}. Analyze data and context, identify patterns and insights. ${tone} Plain text only. ${noBrowser}`,
+    writer:     `You are ${name}, a Writing Agent running on ${id}. Produce clear professional prose with numbered sections. ${tone} Plain text only — no markdown. ${noBrowser}`,
+    coder:      `You are ${name}, a Code Agent running on ${id}. Write clean, well-commented, working code. ${tone} No markdown fences. ${noBrowser}`,
+    reviewer:   `You are ${name}, a Review Agent running on ${id}. Critically evaluate work, identify strengths, weaknesses, improvements. ${tone} Plain text only. ${noBrowser}`,
+    summarizer: `You are ${name}, a Summarizer Agent running on ${id}. Extract and condense the most important information. ${tone} Plain text only. ${noBrowser}`,
     browser:    `You are ${name}, a Browser Agent running on ${id}. You autonomously navigate live websites using browser tools to gather real-time information. Use browser_navigate → browser_read/browser_snapshot → browser_click/browser_fill in sequence. Never guess ref IDs. ${tone}`,
   }
   return prompts[role] ?? prompts.researcher
