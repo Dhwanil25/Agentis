@@ -262,7 +262,7 @@ MIT © [Dhwanil25](https://github.com/Dhwanil25)
 
 <div align="center">
 
-**If Agentis is useful to you, please give it a star ⭐**
+**Your next big idea deserves more than one model. Give it a team.**
 
 Built with React · TypeScript · Vite
 
