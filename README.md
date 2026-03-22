@@ -17,6 +17,11 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Stars](https://img.shields.io/github/stars/Dhwanil25/Agentis?style=flat-square&color=orange)](https://github.com/Dhwanil25/Agentis/stargazers)
+[![Forks](https://img.shields.io/github/forks/Dhwanil25/Agentis?style=flat-square)](https://github.com/Dhwanil25/Agentis/network/members)
+[![Issues](https://img.shields.io/github/issues/Dhwanil25/Agentis?style=flat-square)](https://github.com/Dhwanil25/Agentis/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/Dhwanil25/Agentis/blob/main/CONTRIBUTING.md)
+[![Providers](https://img.shields.io/badge/providers-12-a855f7?style=flat-square)](https://github.com/Dhwanil25/Agentis#supported-providers)
 
 <br />
 
