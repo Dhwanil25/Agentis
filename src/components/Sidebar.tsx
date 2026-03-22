@@ -210,7 +210,7 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
           />
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', letterSpacing: '0.06em' }}>AGENTIS</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>v0.1</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>v0.2</div>
           </div>
         </div>
 

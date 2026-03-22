@@ -348,12 +348,12 @@ async function streamOllama(
 // Generic OpenAI-compatible SSE (OpenAI, Groq, Mistral, DeepSeek, xAI, Together, OpenRouter, LM Studio)
 const OAI_PROXY: Partial<Record<LLMProvider, string>> = {
   openai:     '/openai-proxy',
-  groq:       '/groq-proxy',
+  groq:       '/groq-proxy/openai',
   mistral:    '/mistral-proxy',
   deepseek:   '/deepseek-proxy',
   xai:        '/xai-proxy',
   together:   '/together-proxy',
-  openrouter: '/openrouter-proxy',
+  openrouter: '/openrouter-proxy/api',
 }
 
 async function streamOpenAICompat(

@@ -235,7 +235,7 @@ export function OverviewPage({ apiKey, engineRunning, navigate, onSaveApiKey }: 
             </div>
             {[
               { label: 'Status',    value: engineRunning ? 'Running' : 'Offline', color: engineRunning ? 'var(--green)' : 'var(--muted)' },
-              { label: 'Version',   value: 'v0.1.0',                              color: 'var(--fg)' },
+              { label: 'Version',   value: 'v0.2.0',                              color: 'var(--fg)' },
               { label: 'Provider',  value: activeProvider?.name ?? 'Not set',     color: activeProvider ? 'var(--fg)' : 'var(--muted)' },
               { label: 'Model',     value: activeProvider?.id === 'anthropic' ? 'claude-sonnet-4-6' : activeProvider ? 'default' : '--', color: 'var(--fg)', mono: true },
               { label: 'Agents',    value: `${agents.length} total`,              color: 'var(--fg)' },

@@ -445,7 +445,7 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
     }
     const payload = {
       exportedAt: new Date().toISOString(),
-      version: '0.1',
+      version: '0.2',
       localStorage: snapshot,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
