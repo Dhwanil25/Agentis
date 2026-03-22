@@ -221,7 +221,9 @@ function RightPanel({
   const [tab, setTab] = useState<'team' | 'output'>('team')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const selectedAgent = agents.find(a => a.id === selectedId) as MAAgent | undefined
-  const hasOutput = messages.length > 0 || ((phase === 'synthesizing') && !!finalOutput)
+  const lastMsg = messages[messages.length - 1]
+  const outputAlreadyInMessages = lastMsg?.role === 'assistant' && lastMsg.content === finalOutput
+  const hasOutput = messages.length > 0 || ((phase === 'synthesizing' || phase === 'done') && !!finalOutput)
 
   // Auto-switch to output tab when synthesis starts
   useEffect(() => {
@@ -591,8 +593,8 @@ function RightPanel({
                   </div>
                 ))}
 
-                {/* Live streaming output during synthesis */}
-                {phase === 'synthesizing' && finalOutput && (
+                {/* Live streaming output + done state before effect fires */}
+                {finalOutput && !outputAlreadyInMessages && (
                   <div style={{
                     background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
                     borderRadius: '10px 10px 10px 2px', padding: '10px 12px',
@@ -600,7 +602,7 @@ function RightPanel({
                     whiteSpace: 'pre-wrap',
                   }}>
                     {finalOutput}
-                    <span style={{ opacity: 0.5, animation: 'blink 0.8s step-end infinite' }}>▊</span>
+                    {phase === 'synthesizing' && <span style={{ opacity: 0.5, animation: 'blink 0.8s step-end infinite' }}>▊</span>}
                   </div>
                 )}
 
@@ -720,7 +722,7 @@ export function UniversePage({ apiKey }: Props) {
   const trackState = (fn: (prev: MAState) => MAState) => {
     setMaState(prev => {
       const next = fn(prev)
-      if (next.phase === 'done' && next.finalOutput && next.finalOutput !== prev.finalOutput) {
+      if (next.phase === 'done' && prev.phase !== 'done' && next.finalOutput) {
         pendingOutputRef.current = next.finalOutput
       }
       return next
