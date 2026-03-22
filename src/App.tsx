@@ -13,13 +13,14 @@ import { SchedulerPage } from '@/components/pages/SchedulerPage'
 import { ChannelsPage } from '@/components/pages/ChannelsPage'
 import { SkillsPage } from '@/components/pages/SkillsPage'
 import { HandsPage } from '@/components/pages/HandsPage'
+import { UniversePage } from '@/components/pages/UniversePage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
 import { addHistoryEntry } from '@/components/DashboardScreen'
 
 type Page =
   | 'chat' | 'overview' | 'analytics' | 'logs' | 'sessions'
   | 'approvals' | 'comms' | 'workflows' | 'scheduler'
-  | 'channels' | 'skills' | 'hands' | 'settings'
+  | 'channels' | 'skills' | 'hands' | 'universe' | 'settings'
 
 export default function App() {
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY ?? '')
@@ -98,17 +99,11 @@ export default function App() {
         }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <div style={{
-              width: 32,
-              height: 32,
-              background: 'var(--orange)',
-              borderRadius: 6,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <span style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>A</span>
-            </div>
+            <img
+              src="/favicon.png"
+              alt="Agentis"
+              style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'contain' }}
+            />
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '0.02em' }}>AGENTIS</div>
               <div style={{ fontSize: 11, color: 'var(--muted)' }}>Multi-Agent AI Platform</div>
@@ -122,7 +117,7 @@ export default function App() {
               href="https://console.anthropic.com"
               target="_blank"
               rel="noreferrer"
-              style={{ color: 'var(--orange)' }}
+              style={{ color: 'var(--accent)' }}
             >
               Get one here
             </a>
@@ -190,6 +185,7 @@ export default function App() {
             apiKey={apiKey}
             engineRunning={engineRunning}
             navigate={navigate}
+            onSaveApiKey={key => setApiKey(key)}
           />
         )}
 
@@ -217,13 +213,22 @@ export default function App() {
           />
         )}
 
-        {page === 'scheduler' && <SchedulerPage />}
+        {page === 'scheduler' && (
+          <SchedulerPage
+            execute={execute}
+            navigate={navigate}
+            reset={reset}
+            agentRunning={agentState.loading}
+          />
+        )}
 
         {page === 'channels' && <ChannelsPage />}
 
         {page === 'skills' && <SkillsPage />}
 
-        {page === 'hands' && <HandsPage />}
+        {page === 'hands' && <HandsPage apiKey={apiKey} />}
+
+        {page === 'universe' && <UniversePage apiKey={apiKey} />}
 
         {page === 'settings' && (
           <SettingsPage

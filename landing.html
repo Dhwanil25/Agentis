@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Agentis — The Agent That Thinks</title>
+<link rel="icon" type="image/png" href="/favicon.png" />
+<link rel="apple-touch-icon" href="/favicon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -141,7 +143,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 <canvas id="c"></canvas>
 
 <nav id="nav">
-  <a href="#" class="logo">Agentis<b>.</b></a>
+  <a href="#" class="logo" style="display:flex;align-items:center;gap:8px">
+    <img src="/favicon.png" alt="Agentis" style="width:24px;height:24px;object-fit:contain" />
+    Agentis<b>.</b>
+  </a>
   <div class="nav-links">
     <a href="#c2">How it works</a>
     <a href="#c4">Personas</a>
@@ -162,7 +167,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 <!-- ── Ch 0: Hero ── -->
 <section class="ch ch-c" id="c0" data-i="0">
   <div class="panel" id="p0">
-    <div class="tag">Agentis · Open source</div>
+    <div style="display:flex;align-items:center;gap:18px;margin-bottom:6px">
+      <img src="/agentis-hero.png" alt="Agentis mascot" style="width:96px;height:96px;object-fit:contain;border-radius:16px;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(200,240,74,0.18))" />
+      <div class="tag" style="margin-bottom:0">Agentis · Open source</div>
+    </div>
     <h1>The AI agent that<br><em>thinks out loud</em><br>as it builds.</h1>
     <p class="sub">Not one prompt, one answer. A parallel pipeline of composable skills — Planner, Coder, Reviewer, Security Auditor — running live so you watch every decision unfold. Export the result directly to Claude Code.</p>
     <div class="acts">

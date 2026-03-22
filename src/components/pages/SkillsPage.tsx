@@ -71,7 +71,7 @@ export function SkillsPage() {
   const categoryColor: Record<Exclude<SkillCategory, 'all'>, string> = {
     development: 'var(--blue)',
     writing: 'var(--green)',
-    analysis: 'var(--orange)',
+    analysis: 'var(--accent)',
     research: '#a78bfa',
     operations: '#f59e0b',
     security: 'var(--red)',
@@ -148,9 +148,9 @@ export function SkillsPage() {
                   style={{
                     padding: '4px 12px',
                     borderRadius: 20,
-                    border: `1px solid ${browseCategory === cat ? 'var(--orange)' : 'var(--border)'}`,
-                    background: browseCategory === cat ? 'var(--orange-bg)' : 'transparent',
-                    color: browseCategory === cat ? 'var(--orange)' : 'var(--muted)',
+                    border: `1px solid ${browseCategory === cat ? 'var(--accent)' : 'var(--border)'}`,
+                    background: browseCategory === cat ? 'var(--accent-bg)' : 'transparent',
+                    color: browseCategory === cat ? 'var(--accent)' : 'var(--muted)',
                     fontSize: 12,
                     cursor: 'pointer',
                     fontFamily: 'var(--font-sans)',

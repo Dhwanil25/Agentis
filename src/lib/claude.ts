@@ -27,6 +27,10 @@ export interface StreamChunk {
   tool?: string    // tool name for step_tool_start
   input?: string   // argument fragment for step_tool_input
   thinking?: string
+  // Token usage (populated on all_done)
+  totalInputTokens?: number
+  totalOutputTokens?: number
+  model?: string
 }
 
 const SKILL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -99,6 +103,8 @@ function getSkillPrompt(skill: string, _task: string, previousOutputs: string[])
   return prompts[skill] ?? `You are the ${skill} skill. Complete your part of the task thoroughly.${context}`
 }
 
+const MODEL_ID = 'claude-sonnet-4-20250514'
+
 export async function runAgentStreaming(
   task: string,
   steps: AgentStep[],
@@ -106,6 +112,8 @@ export async function runAgentStreaming(
   onChunk: (chunk: StreamChunk) => void
 ): Promise<void> {
   const previousOutputs: string[] = []
+  let totalInputTokens  = 0
+  let totalOutputTokens = 0
 
   for (const step of steps) {
     onChunk({ type: 'step_start', stepId: step.id })
@@ -120,7 +128,7 @@ export async function runAgentStreaming(
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: MODEL_ID,
           max_tokens: 1500,
           stream: true,
           system: getSkillPrompt(step.skill, task, previousOutputs),
@@ -149,8 +157,17 @@ export async function runAgentStreaming(
           const data = line.slice(6).trim()
           if (data === '[DONE]') continue
           try {
-            const event = JSON.parse(data) as { type: string; delta?: { type: string; text?: string } }
-            if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+            const event = JSON.parse(data) as {
+              type: string
+              delta?: { type: string; text?: string }
+              message?: { usage?: { input_tokens?: number } }
+              usage?: { output_tokens?: number }
+            }
+            if (event.type === 'message_start') {
+              totalInputTokens += event.message?.usage?.input_tokens ?? 0
+            } else if (event.type === 'message_delta') {
+              totalOutputTokens += event.usage?.output_tokens ?? 0
+            } else if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
               const text = event.delta.text ?? ''
               fullOutput += text
               onChunk({ type: 'step_stream', stepId: step.id, delta: text })
@@ -168,5 +185,5 @@ export async function runAgentStreaming(
     }
   }
 
-  onChunk({ type: 'all_done' })
+  onChunk({ type: 'all_done', totalInputTokens, totalOutputTokens, model: MODEL_ID })
 }

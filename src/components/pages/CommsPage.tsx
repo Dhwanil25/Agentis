@@ -45,7 +45,7 @@ export function CommsPage({ engineRunning }: Props) {
   const agentStateColor = (state: string) => {
     if (state === 'Running') return 'var(--green)'
     if (state === 'Terminated') return 'var(--red)'
-    return 'var(--orange)'
+    return 'var(--accent)'
   }
 
   const eventStatusBadge = (entry: HistoryEntry) => {

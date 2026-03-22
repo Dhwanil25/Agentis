@@ -23,6 +23,7 @@ import {
   chmodSync,
   createWriteStream,
   copyFileSync,
+  readdirSync,
 } from 'fs'
 import { get as httpsGet } from 'https'
 import http from 'http'
@@ -64,8 +65,18 @@ function setStatus(state: DaemonState, message: string) {
   console.log(`[Agentis Engine] ${message}`)
 }
 
+// Strip ANSI/VT100 escape codes from terminal output
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g
+
+function stripAnsi(s: string): string {
+  return s.replace(ANSI_RE, '').replace(/\r/g, '')
+}
+
 function pushLog(line: string) {
-  const entry = { line, ts: Date.now() }
+  const clean = stripAnsi(line).trim()
+  if (!clean) return
+  const entry = { line: clean, ts: Date.now() }
   recentLogs.push(entry)
   if (recentLogs.length > 500) recentLogs.shift()
   const payload = `data: ${JSON.stringify(entry)}\n\n`
@@ -383,6 +394,140 @@ async function boot(root: string, port: number) {
   ].join('\n'))
 }
 
+// ── OpenClaw migration helpers ────────────────────────────────────────────────
+
+const TOOL_MAP: Record<string, string> = {
+  read_file:        'file_read',
+  write_file:       'file_write',
+  execute_command:  'shell_exec',
+  run_command:      'shell_exec',
+  list_directory:   'dir_list',
+  search_files:     'file_search',
+  http_request:     'http_fetch',
+  send_message:     'comms_send',
+  create_agent:     'agent_spawn',
+  call_agent:       'agent_call',
+}
+
+function countFiles(dir: string, exts: string[]): number {
+  try {
+    return readdirSync(dir, { recursive: true } as Parameters<typeof readdirSync>[1])
+      .filter((f): f is string => typeof f === 'string' && exts.some(e => f.endsWith(e)))
+      .length
+  } catch { return 0 }
+}
+
+function detectOpenClaw(): { path: string; agents: number; channels: number; memories: number; files: number } | null {
+  const candidates = [
+    path.join(os.homedir(), '.openclaw'),
+    path.join(os.homedir(), 'openclaw'),
+    path.join(os.homedir(), '.config', 'openclaw'),
+  ]
+  for (const p of candidates) {
+    if (!existsSync(p)) continue
+    return {
+      path: p,
+      agents:   countFiles(path.join(p, 'agents'),    ['.yaml', '.yml', '.toml']),
+      channels: countFiles(path.join(p, 'channels'),  ['.yaml', '.yml', '.toml', '.json']),
+      memories: countFiles(path.join(p, 'memory'),    ['.json', '.db']),
+      files:    countFiles(path.join(p, 'workspace'), ['*']),
+    }
+  }
+  return null
+}
+
+function convertYamlToToml(yamlContent: string): string {
+  // Best-effort YAML→TOML line-by-line conversion for agent files
+  const lines = yamlContent.split('\n')
+  const out: string[] = []
+  for (const line of lines) {
+    let l = line
+    // Remap tool names
+    for (const [from, to] of Object.entries(TOOL_MAP)) {
+      l = l.replace(new RegExp(`\\b${from}\\b`, 'g'), to)
+    }
+    // Convert YAML key: value → TOML key = "value" (simple scalars only)
+    l = l.replace(/^(\s*)(\w[\w_]*):\s+(.+)$/, (_m, indent, key, val) => {
+      const trimmed = val.trim()
+      if (trimmed === 'true' || trimmed === 'false' || /^-?\d/.test(trimmed)) {
+        return `${indent}${key} = ${trimmed}`
+      }
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        return `${indent}${key} = ${trimmed}`
+      }
+      return `${indent}${key} = "${trimmed.replace(/"/g, '\\"')}"`
+    })
+    // Convert YAML list items (- value) to TOML array items (keep as-is, handled above)
+    out.push(l)
+  }
+  return out.join('\n')
+}
+
+function migrateOpenClaw(src: string, dst: string): { agents: number; channels: number; memories: number; files: number } {
+  mkdirSync(dst, { recursive: true })
+
+  let agents = 0, channels = 0, memories = 0, files = 0
+
+  // Convert agent.yaml → agent.toml
+  const agentsSrc = path.join(src, 'agents')
+  const agentsDst = path.join(dst, 'agents')
+  if (existsSync(agentsSrc)) {
+    mkdirSync(agentsDst, { recursive: true })
+    for (const f of readdirSync(agentsSrc)) {
+      const srcFile = path.join(agentsSrc, f)
+      if (f.endsWith('.yaml') || f.endsWith('.yml')) {
+        const content = readFileSync(srcFile, 'utf8')
+        const toml = convertYamlToToml(content)
+        const dstFile = path.join(agentsDst, f.replace(/\.ya?ml$/, '.toml'))
+        writeFileSync(dstFile, toml)
+        agents++
+      } else if (f.endsWith('.toml')) {
+        copyFileSync(srcFile, path.join(agentsDst, f))
+        agents++
+      }
+    }
+  }
+
+  // Merge channel configs into config.toml
+  const channelsSrc = path.join(src, 'channels')
+  if (existsSync(channelsSrc)) {
+    const sections: string[] = ['\n# Channels (migrated from OpenClaw)\n[channels]']
+    for (const f of readdirSync(channelsSrc)) {
+      const srcFile = path.join(channelsSrc, f)
+      try {
+        const content = readFileSync(srcFile, 'utf8')
+        sections.push(`\n# ${f}\n${convertYamlToToml(content)}`)
+        channels++
+      } catch { /* skip unreadable */ }
+    }
+    const configPath = path.join(dst, 'config.toml')
+    const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
+    writeFileSync(configPath, existing + sections.join('\n'))
+  }
+
+  // Copy memory data
+  const memorySrc = path.join(src, 'memory')
+  const memoryDst = path.join(dst, 'memory')
+  if (existsSync(memorySrc)) {
+    mkdirSync(memoryDst, { recursive: true })
+    for (const f of readdirSync(memorySrc)) {
+      try { copyFileSync(path.join(memorySrc, f), path.join(memoryDst, f)); memories++ } catch { /* skip */ }
+    }
+  }
+
+  // Copy workspace files
+  const workspaceSrc = path.join(src, 'workspace')
+  const workspaceDst = path.join(dst, 'workspace')
+  if (existsSync(workspaceSrc)) {
+    mkdirSync(workspaceDst, { recursive: true })
+    for (const f of readdirSync(workspaceSrc)) {
+      try { copyFileSync(path.join(workspaceSrc, f), path.join(workspaceDst, f)); files++ } catch { /* skip */ }
+    }
+  }
+
+  return { agents, channels, memories, files }
+}
+
 // ── Vite plugin ───────────────────────────────────────────────────────────────
 
 export function agentisEnginePlugin(): Plugin {
@@ -426,6 +571,40 @@ export function agentisEnginePlugin(): Plugin {
           } catch {
             res.writeHead(400)
             res.end(JSON.stringify({ error: 'Bad request' }))
+          }
+          return
+        }
+
+        // ── GET /agentis/migrate/detect ───────────────────────────────────────
+        if (url === '/agentis/migrate/detect' && req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json')
+          const result = detectOpenClaw()
+          if (result) {
+            res.end(JSON.stringify(result))
+          } else {
+            res.end(JSON.stringify({ path: null }))
+          }
+          return
+        }
+
+        // ── POST /agentis/migrate ─────────────────────────────────────────────
+        if (url === '/agentis/migrate' && req.method === 'POST') {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const body = await readBody(req)
+            const { source, target } = JSON.parse(body) as { source?: string; target?: string }
+            const src = (source ?? '~/.openclaw').replace(/^~/, os.homedir())
+            const dst = (target ?? '~/.openfang').replace(/^~/, os.homedir())
+            if (!existsSync(src)) {
+              res.writeHead(404)
+              res.end(JSON.stringify({ error: `Source directory not found: ${src}` }))
+              return
+            }
+            const result = migrateOpenClaw(src, dst)
+            res.end(JSON.stringify(result))
+          } catch (e) {
+            res.writeHead(500)
+            res.end(JSON.stringify({ error: String(e) }))
           }
           return
         }

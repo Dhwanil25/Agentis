@@ -88,7 +88,7 @@ export function WorkflowsPage({ apiKey, agentState, executeWorkflow, reset }: Pr
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>{doneCount}/{nodes.length} nodes</span>
               </div>
               <div style={{ height: 3, background: 'var(--surface)', borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: agentState.error ? 'var(--red)' : 'var(--orange)', borderRadius: 99, transition: 'width 0.4s ease' }} />
+                <div style={{ height: '100%', width: `${pct}%`, background: agentState.error ? 'var(--red)' : 'var(--accent)', borderRadius: 99, transition: 'width 0.4s ease' }} />
               </div>
             </div>
           )}
@@ -233,7 +233,7 @@ export function WorkflowsPage({ apiKey, agentState, executeWorkflow, reset }: Pr
               style={{
                 padding: '5px 12px',
                 fontSize: 12,
-                background: viewMode === 'list' ? 'var(--orange)' : 'transparent',
+                background: viewMode === 'list' ? 'var(--accent)' : 'transparent',
                 color: viewMode === 'list' ? '#fff' : 'var(--muted)',
                 border: 'none',
                 cursor: 'pointer',
@@ -247,7 +247,7 @@ export function WorkflowsPage({ apiKey, agentState, executeWorkflow, reset }: Pr
               style={{
                 padding: '5px 12px',
                 fontSize: 12,
-                background: viewMode === 'visual' ? 'var(--orange)' : 'transparent',
+                background: viewMode === 'visual' ? 'var(--accent)' : 'transparent',
                 color: viewMode === 'visual' ? '#fff' : 'var(--muted)',
                 border: 'none',
                 cursor: 'pointer',

@@ -7,6 +7,8 @@ import type { Artifact } from '@/types/artifacts'
 import { runWorkflow } from '@/lib/engine'
 import { SKILL_COLORS, DEFAULT_SKILL_COLOR } from '@/lib/colors'
 import { buildOpenFangPipeline, runOnOpenFangHand } from '@/lib/openfang-runner'
+import { addUsageRecord, calculateCost } from '@/lib/analytics'
+import { autoSaveTaskMemory } from '@/lib/memory'
 
 export type { PipelineStep }
 
@@ -66,7 +68,7 @@ export function useAgent(apiKey: string, openfangUrl?: string) {
     if (!task.trim() || !apiKey) return
 
     const pipeline = buildPipeline(task, personaId)
-    setState(s => ({ ...s, pipeline, loading: true, error: null, step: 'execute' }))
+    setState(s => ({ ...s, pipeline, loading: true, error: null, step: 'execute', task }))
 
     await runAgentStreaming(task, pipeline, apiKey, (chunk) => {
       if (chunk.type === 'step_start') {
@@ -91,7 +93,23 @@ export function useAgent(apiKey: string, openfangUrl?: string) {
           ),
         }))
       } else if (chunk.type === 'all_done') {
-        setState(s => ({ ...s, loading: false, step: 'output' }))
+        setState(s => {
+          // Auto-save task memory from first completed step output
+          const firstOutput = s.pipeline.find(p => p.output)?.output ?? ''
+          if (firstOutput) autoSaveTaskMemory(personaId, task, firstOutput)
+          return { ...s, loading: false, step: 'output' }
+        })
+        // Save token usage to analytics
+        if (chunk.totalInputTokens !== undefined) {
+          const model = chunk.model ?? 'claude-sonnet-4-20250514'
+          addUsageRecord({
+            ts: Date.now(), model, persona: personaId, task,
+            inputTokens: chunk.totalInputTokens,
+            outputTokens: chunk.totalOutputTokens ?? 0,
+            cost: calculateCost(model, chunk.totalInputTokens, chunk.totalOutputTokens ?? 0),
+            stepCount: pipeline.length,
+          })
+        }
       } else if (chunk.type === 'error') {
         setState(s => ({
           ...s,
