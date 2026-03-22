@@ -6,7 +6,9 @@
 
 <h1>AGENTIS</h1>
 
-<p><strong>Open-source multi-agent AI platform. Deploy fleets of AI agents across 12 LLM providers — watch them think, collaborate, and deliver in real time.</strong></p>
+<p><strong>Most AI tools give you one model and one answer. Agentis gives you a team.</strong></p>
+
+<p>Deploy fleets of specialized agents — researchers, coders, analysts, writers, and more — across 12 LLM providers simultaneously. Each agent works its angle, shares findings, and hands off to the next. You watch it all unfold in a live 3D universe, in real time. Open source, provider-agnostic, and built for tasks that are too big for a single prompt.</p>
 
 <br />
 
