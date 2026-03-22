@@ -1,0 +1,40 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            You are a senior engineer reviewing a pull request for Agentis — an open-source multi-agent AI platform built with React, TypeScript, and Vite.
+
+            Review this PR and provide clear, actionable feedback covering:
+
+            1. **Correctness** — Does the logic work? Are there edge cases not handled?
+            2. **Security** — Any hardcoded secrets, XSS risks, or unsafe API usage?
+            3. **Performance** — Unnecessary re-renders, heavy operations on the main thread, memory leaks?
+            4. **Code quality** — Is it readable, consistent with the existing codebase style?
+            5. **TypeScript** — Proper types, no unsafe `any` casts without good reason?
+
+            Key things to watch for in this codebase:
+            - API keys must never be hardcoded — they come from `localStorage` via `loadAllProviderKeys()`
+            - Streaming responses use SSE — ensure proper cleanup of event listeners and AbortSignals
+            - Agent state updates must go through the `update()` callback, not direct mutation
+            - Canvas rendering in `UniversePage.tsx` uses raw canvas API — watch for draw calls outside `requestAnimationFrame`
+
+            Be concise and direct. Praise what's done well. Flag what needs to change.
+            If the PR is clean and ready to merge, say so clearly.
