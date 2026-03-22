@@ -712,6 +712,21 @@ export function UniversePage({ apiKey }: Props) {
   const taskRef = useRef(task)
   taskRef.current = task
 
+  // Captures the final output INSIDE the setMaState functional update (guaranteed fresh, no stale closure)
+  const pendingOutputRef = useRef('')
+
+  // Wraps the engine's update callback: intercepts the state transition to 'done'
+  // and stores finalOutput in the ref so the effect below can reliably read it.
+  const trackState = (fn: (prev: MAState) => MAState) => {
+    setMaState(prev => {
+      const next = fn(prev)
+      if (next.phase === 'done' && next.finalOutput && next.finalOutput !== prev.finalOutput) {
+        pendingOutputRef.current = next.finalOutput
+      }
+      return next
+    })
+  }
+
   // Auto-save whenever a task finishes (done or error)
   useEffect(() => {
     if (maState.phase !== 'done' && maState.phase !== 'error') return
@@ -721,14 +736,18 @@ export function UniversePage({ apiKey }: Props) {
     setSessions(loadSessions())
   }, [maState.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push assistant message to chat history when synthesis completes
+  // Push assistant message to chat history when synthesis completes.
+  // Reads from pendingOutputRef (set synchronously inside trackState) instead of
+  // maState.finalOutput to avoid stale closure issues.
   useEffect(() => {
-    if (maState.phase !== 'done' || !maState.finalOutput) return
+    if (maState.phase !== 'done') return
+    const output = pendingOutputRef.current
+    if (!output) return
+    pendingOutputRef.current = ''
     setMessages(prev => {
       const last = prev[prev.length - 1]
-      // Don't duplicate if last message is already this assistant output
-      if (last?.role === 'assistant' && last.content === maState.finalOutput) return prev
-      return [...prev, { role: 'assistant', content: maState.finalOutput }]
+      if (last?.role === 'assistant' && last.content === output) return prev
+      return [...prev, { role: 'assistant', content: output }]
     })
   }, [maState.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -739,12 +758,13 @@ export function UniversePage({ apiKey }: Props) {
     setSelectedId(null)
     setSavedToMemory(false)
     setMessages([]) // fresh conversation for new task
+    pendingOutputRef.current = ''
     // Create the session row immediately so it appears in the sidebar right away
     const session = saveSession(taskToRun.trim(), { ...INITIAL_MA_STATE, phase: 'planning' })
     setActiveSessionId(session.id)
     setSessions(loadSessions())
     try {
-      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, fn => setMaState(fn))
+      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, trackState)
     } finally {
       setRunning(false)
     }
@@ -757,7 +777,7 @@ export function UniversePage({ apiKey }: Props) {
     setRunning(true)
     setSavedToMemory(false)
     try {
-      await runFollowUpTask(question.trim(), maState, providerKeys, { w: 800, h: 600 }, fn => setMaState(fn))
+      await runFollowUpTask(question.trim(), maState, providerKeys, { w: 800, h: 600 }, trackState)
     } finally {
       setRunning(false)
     }
