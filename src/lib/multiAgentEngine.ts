@@ -768,7 +768,7 @@ async function streamWithFailover(
 }
 
 // ── Orchestrator + worker prompts ──────────────────────────────────────────────
-function buildOrchestratorSystem(availableProviders: LLMProvider[]): string {
+function buildOrchestratorSystem(availableProviders: LLMProvider[], browserEnabled = false): string {
   const providerGuide = availableProviders.map(p => {
     const strengths: Record<LLMProvider, string> = {
       anthropic:  'reasoning, analysis, writing, code review',
@@ -815,8 +815,8 @@ Return ONLY valid JSON, no markdown:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser
-
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer${browserEnabled ? ', browser' : ''}
+${browserEnabled ? `
 BROWSER ROLE RULES — assign role="browser" when the task involves ANY of:
 - Opening, visiting, or navigating to a specific URL or website
 - Fetching live/real-time data (today's news, current prices, trending repos, live scores)
@@ -825,7 +825,7 @@ BROWSER ROLE RULES — assign role="browser" when the task involves ANY of:
 - Checking what is currently on a webpage
 If the user says "go to", "open", "visit", "check", "browse", "navigate to", or names a URL — assign browser role.
 Do NOT assign browser for general knowledge questions that don't require live data.
-
+` : ''}
 Rules:
 - Maximize parallel execution (minimize dependsOn chains)
 - Spread agents across all available providers for multi-model comparison
@@ -833,7 +833,7 @@ ${availableProviders.length === 1 ? `- SINGLE PROVIDER MODE (${PROVIDER_LABELS[a
 - Keep task descriptions specific and actionable`
 }
 
-function buildFollowUpOrchestratorSystem(availableProviders: LLMProvider[]): string {
+function buildFollowUpOrchestratorSystem(availableProviders: LLMProvider[], browserEnabled = false): string {
   return `You are an Orchestrator managing a PERSISTENT agent universe. The universe has existing agents with completed work.
 
 Available providers: [${availableProviders.join(', ')}]
@@ -858,8 +858,8 @@ Return ONLY valid JSON:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser
-Assign role="browser" when the follow-up involves opening a URL, visiting a website, or fetching live/real-time web content.
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer${browserEnabled ? ', browser' : ''}
+${browserEnabled ? 'Assign role="browser" when the follow-up involves opening a URL, visiting a website, or fetching live/real-time web content.' : ''}
 
 Rules: new agent IDs start with "fu_", new agents can dependsOn existing IDs, spread across providers`
 }
@@ -1040,6 +1040,7 @@ export async function runMultiAgentTask(
   keys: ProviderKeys,
   canvasSize: { w: number; h: number },
   update: MAUpdater,
+  browserEnabled = false,
 ): Promise<void> {
   const ORCH = 'orchestrator'
   const { w: W, h: H } = canvasSize
@@ -1052,7 +1053,7 @@ export async function runMultiAgentTask(
 
   let planRaw = ''
   try {
-    await streamAnthropic('claude-sonnet-4-6', buildOrchestratorSystem(availableProviders), `Task: ${task}`, keys.anthropic ?? '', 4096,
+    await streamAnthropic('claude-sonnet-4-6', buildOrchestratorSystem(availableProviders, browserEnabled), `Task: ${task}`, keys.anthropic ?? '', 4096,
       t => { planRaw += t; update(s => ({ ...s, agents: s.agents.map(a => a.id === ORCH ? { ...a, output: planRaw } : a) })) },
     )
   } catch (e) { update(s => ({ ...s, phase: 'error', errorMsg: String(e) })); return }
@@ -1112,6 +1113,7 @@ export async function runFollowUpTask(
   keys: ProviderKeys,
   canvasSize: { w: number; h: number },
   update: MAUpdater,
+  browserEnabled = false,
 ): Promise<void> {
   const ORCH = 'orchestrator'
   const { w: W, h: H } = canvasSize
@@ -1130,7 +1132,7 @@ export async function runFollowUpTask(
 
   let planRaw = ''
   try {
-    await streamAnthropic('claude-sonnet-4-6', buildFollowUpOrchestratorSystem(availableProviders),
+    await streamAnthropic('claude-sonnet-4-6', buildFollowUpOrchestratorSystem(availableProviders, browserEnabled),
       `Existing agents:\n${existingContext || '(none)'}\nExisting IDs: [${existingIds.join(', ')}]\n\nFollow-up: ${question}`,
       keys.anthropic ?? '', 4096,
       t => { planRaw += t; update(s => ({ ...s, agents: s.agents.map(a => a.id === ORCH ? { ...a, output: planRaw } : a) })) },

@@ -202,6 +202,7 @@ interface RightPanelProps {
   setProvidersOpen: (fn: (o: boolean) => boolean) => void
   activeProviders: LLMProvider[]
   messages: ChatMsg[]
+  browserEnabled: boolean; onToggleBrowser: () => void
   onLaunch: () => void; onFollowUp: (q: string) => void
   onSaveMemory: () => void; onCopyOutput: () => void
   onExportMd: () => void; onExportTxt: () => void; onDeepDive: () => void
@@ -215,7 +216,7 @@ function RightPanel({
   task, setTask, running, hasAnyKey,
   selectedId, setSelectedId, followUp, setFollowUp,
   savedToMemory, copiedOutput, providerKeys, providersOpen, setProvidersOpen,
-  activeProviders, messages, onLaunch, onFollowUp, onSaveMemory, onCopyOutput,
+  activeProviders, messages, browserEnabled, onToggleBrowser, onLaunch, onFollowUp, onSaveMemory, onCopyOutput,
   onExportMd, onExportTxt, onDeepDive, updateProviderKey, onTestKey, testStatus,
 }: RightPanelProps) {
   const [tab, setTab] = useState<'team' | 'output'>('team')
@@ -351,6 +352,38 @@ function RightPanel({
             outline: 'none',
           }}
         />
+        {/* Browser toggle */}
+        <button
+          onClick={onToggleBrowser}
+          disabled={running}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', marginBottom: 8, padding: '7px 10px',
+            background: browserEnabled ? 'rgba(34,211,238,0.08)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${browserEnabled ? 'rgba(34,211,238,0.35)' : 'var(--border)'}`,
+            borderRadius: 7, cursor: running ? 'not-allowed' : 'pointer',
+            transition: 'background 0.15s, border-color 0.15s',
+          }}
+        >
+          <div style={{
+            width: 28, height: 16, borderRadius: 8, flexShrink: 0,
+            background: browserEnabled ? '#22d3ee' : 'rgba(255,255,255,0.12)',
+            position: 'relative', transition: 'background 0.2s',
+          }}>
+            <div style={{
+              position: 'absolute', top: 2, left: browserEnabled ? 14 : 2,
+              width: 12, height: 12, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s',
+            }} />
+          </div>
+          <span style={{ fontSize: 11, color: browserEnabled ? '#22d3ee' : 'var(--muted)', fontWeight: 600 }}>
+            Browser Agent
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 'auto' }}>
+            {browserEnabled ? 'on' : 'off'}
+          </span>
+        </button>
+
         <button
           className="btn-primary"
           onClick={() => onLaunch()}
@@ -674,6 +707,7 @@ export function UniversePage({ apiKey }: Props) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [browserEnabled, setBrowserEnabled] = useState(false)
 
 
   // Sync apiKey prop → Settings localStorage if not already set
@@ -766,7 +800,7 @@ export function UniversePage({ apiKey }: Props) {
     setActiveSessionId(session.id)
     setSessions(loadSessions())
     try {
-      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, trackState)
+      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, trackState, browserEnabled)
     } finally {
       setRunning(false)
     }
@@ -779,7 +813,7 @@ export function UniversePage({ apiKey }: Props) {
     setRunning(true)
     setSavedToMemory(false)
     try {
-      await runFollowUpTask(question.trim(), maState, providerKeys, { w: 800, h: 600 }, trackState)
+      await runFollowUpTask(question.trim(), maState, providerKeys, { w: 800, h: 600 }, trackState, browserEnabled)
     } finally {
       setRunning(false)
     }
@@ -894,6 +928,8 @@ export function UniversePage({ apiKey }: Props) {
           setProvidersOpen={setProvidersOpen}
           activeProviders={activeProviders}
           messages={messages}
+          browserEnabled={browserEnabled}
+          onToggleBrowser={() => setBrowserEnabled(v => !v)}
           onLaunch={handleLaunch}
           onFollowUp={handleFollowUp}
           onSaveMemory={() => {
