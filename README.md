@@ -35,7 +35,7 @@
 
 ## Demo
 
-[![Demo](https://cdn.loom.com/sessions/thumbnails/fc32d9dee8314226b9e9cd32e31baf50-with-play.gif)](https://www.loom.com/share/fc32d9dee8314226b9e9cd32e31baf50)
+**[▶ Watch the demo on Loom](https://www.loom.com/share/fc32d9dee8314226b9e9cd32e31baf50)**
 
 ---
 
