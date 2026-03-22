@@ -1,7 +1,7 @@
 // ── Multi-Agent Orchestration Engine ──────────────────────────────────────────
 // All 12 providers from Agentis Settings — exact model names on every agent.
 
-export type AgentRole = 'orchestrator' | 'researcher' | 'analyst' | 'writer' | 'coder' | 'reviewer' | 'planner' | 'summarizer'
+export type AgentRole = 'orchestrator' | 'researcher' | 'analyst' | 'writer' | 'coder' | 'reviewer' | 'planner' | 'summarizer' | 'browser'
 export type AgentStatus = 'idle' | 'thinking' | 'working' | 'waiting' | 'done' | 'error' | 'recalled'
 export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'expert'
 
@@ -65,6 +65,7 @@ export const ROLE_COLORS: Record<AgentRole, string> = {
   reviewer:     '#ec4899',
   planner:      '#8b5cf6',
   summarizer:   '#64748b',
+  browser:      '#22d3ee',
 }
 
 // ── Exact model names per provider per complexity ──────────────────────────────
@@ -212,6 +213,294 @@ function getAvailableProviders(keys: ProviderKeys): LLMProvider[] {
     if (val) p.push(provider)
   }
   return p.length ? p : ['anthropic']
+}
+
+// ── PinchTab Browser Hand integration ─────────────────────────────────────────
+const PT_TOKEN_KEY = 'agentis_pinchtab_token'
+const PT_BASE = '/pinchtab'
+
+function getPtToken(): string {
+  try { return localStorage.getItem(PT_TOKEN_KEY) ?? '' } catch { return '' }
+}
+
+async function ptFetchEngine(path: string, opts?: RequestInit): Promise<Response> {
+  const token = getPtToken()
+  return fetch(`${PT_BASE}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts?.headers ?? {}),
+    },
+    signal: AbortSignal.timeout(12000),
+  })
+}
+
+async function ptHealthEngine(): Promise<{ ok: boolean; instanceId: string }> {
+  try {
+    if (!getPtToken()) return { ok: false, instanceId: '' }
+    const res = await ptFetchEngine('/health')
+    if (!res.ok) return { ok: false, instanceId: '' }
+    const data = await res.json() as { status?: string; defaultInstance?: { id: string } }
+    return { ok: data.status === 'ok', instanceId: data.defaultInstance?.id ?? '' }
+  } catch { return { ok: false, instanceId: '' } }
+}
+
+async function ptOpenTabEngine(instanceId: string, url: string): Promise<string> {
+  const res = await ptFetchEngine(`/instances/${instanceId}/tabs/open`, {
+    method: 'POST', body: JSON.stringify({ url }),
+  })
+  if (!res.ok) throw new Error(`Failed to open tab: ${res.status} ${await res.text().catch(() => res.statusText)}`)
+  const data = await res.json() as { tabId: string }
+  return data.tabId
+}
+
+async function ptSnapshotEngine(tabId: string): Promise<string> {
+  const res = await ptFetchEngine(`/tabs/${tabId}/snapshot?filter=interactive`)
+  if (!res.ok) throw new Error(`Snapshot failed: ${res.statusText}`)
+  const data = await res.json() as { count: number; nodes: Array<{ ref: string; role: string; name: string }> }
+  if (!data.nodes?.length) return 'No interactive elements found. Try browser_read instead.'
+  return `Interactive elements (${data.count} total — use ref IDs for click/fill):\n${data.nodes.map(n => `[${n.ref}] ${n.role}: ${n.name}`).join('\n')}`
+}
+
+async function ptTextEngine(tabId: string): Promise<string> {
+  const res = await ptFetchEngine(`/tabs/${tabId}/text`)
+  if (!res.ok) throw new Error(`Read failed: ${res.statusText}`)
+  const data = await res.json() as { text?: string; title?: string; url?: string; truncated?: boolean }
+  const header = `Title: ${data.title ?? '(untitled)'}\nURL: ${data.url ?? ''}\n\n`
+  const body = data.text ?? '(empty page)'
+  const full = header + body + (data.truncated ? '\n\n[content truncated by server]' : '')
+  return full.length > 6000 ? full.slice(0, 6000) + '\n[... truncated to 6000 chars]' : full
+}
+
+async function ptClickEngine(tabId: string, ref: string): Promise<string> {
+  const res = await ptFetchEngine(`/tabs/${tabId}/action`, {
+    method: 'POST', body: JSON.stringify({ kind: 'click', ref }),
+  })
+  if (!res.ok) throw new Error(`Click failed: ${res.statusText}`)
+  const data = await res.json() as { success?: boolean }
+  return data.success ? `Clicked [${ref}] successfully` : `Click on [${ref}] may not have worked`
+}
+
+async function ptFillEngine(tabId: string, ref: string, value: string): Promise<string> {
+  const res = await ptFetchEngine(`/tabs/${tabId}/action`, {
+    method: 'POST', body: JSON.stringify({ kind: 'fill', ref, value }),
+  })
+  if (!res.ok) throw new Error(`Fill failed: ${res.statusText}`)
+  const data = await res.json() as { success?: boolean }
+  const preview = value.length > 40 ? value.slice(0, 40) + '…' : value
+  return data.success ? `Filled [${ref}] with "${preview}"` : `Fill on [${ref}] may not have worked`
+}
+
+// Browser tool definitions (same schema as HandsPage, used in Claude tool-use calls)
+const ENGINE_BROWSER_TOOLS = [
+  {
+    name: 'browser_navigate',
+    description: 'Navigate the browser to a URL. Use full URLs including https://. After navigating, use browser_snapshot or browser_read.',
+    input_schema: { type: 'object', properties: { url: { type: 'string', description: 'Full URL including https://' } }, required: ['url'] },
+  },
+  {
+    name: 'browser_snapshot',
+    description: 'Get all interactive elements on the current page as an accessibility tree with ref IDs (e0, e1...). ALWAYS call this before browser_click or browser_fill.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'browser_read',
+    description: 'Read the full text content of the current page — title, URL, and all visible text.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'browser_click',
+    description: 'Click an element using its ref ID from browser_snapshot. Always snapshot first to get valid refs.',
+    input_schema: { type: 'object', properties: { ref: { type: 'string', description: 'Ref ID from browser_snapshot (e.g. "e0", "e5")' } }, required: ['ref'] },
+  },
+  {
+    name: 'browser_fill',
+    description: 'Type text into an input using its ref ID from browser_snapshot. Always snapshot first.',
+    input_schema: { type: 'object', properties: { ref: { type: 'string', description: 'Ref ID of the input from browser_snapshot' }, value: { type: 'string', description: 'Text to type' } }, required: ['ref', 'value'] },
+  },
+]
+
+// Claude tool-use types (non-streaming, for the browser agent loop)
+interface BrowserTextBlock  { type: 'text'; text: string }
+interface BrowserToolUseBlock { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+type BrowserBlock = BrowserTextBlock | BrowserToolUseBlock
+interface BrowserClaudeResponse { stop_reason: string; content: BrowserBlock[] }
+interface BrowserMessageParam { role: 'user' | 'assistant'; content: string | BrowserBlock[] | BrowserToolResult[] }
+interface BrowserToolResult { type: 'tool_result'; tool_use_id: string; content: string }
+
+const BROWSER_LOOP_MODEL  = 'claude-haiku-4-5-20251001'
+const BROWSER_FINAL_MODEL = 'claude-sonnet-4-6'
+const BROWSER_HISTORY_LIMIT = 600
+
+async function callClaudeWithBrowserTools(
+  apiKey: string,
+  model: string,
+  messages: BrowserMessageParam[],
+  useTools: boolean,
+): Promise<BrowserClaudeResponse> {
+  const compressed = messages.map(msg => {
+    if (msg.role !== 'user' || !Array.isArray(msg.content)) return msg
+    return {
+      ...msg,
+      content: (msg.content as BrowserToolResult[]).map(block => {
+        if (block.type !== 'tool_result') return block
+        return block.content.length > BROWSER_HISTORY_LIMIT
+          ? { ...block, content: block.content.slice(0, BROWSER_HISTORY_LIMIT) + '\n[...truncated]' }
+          : block
+      }),
+    }
+  })
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        ...(useTools ? { tools: ENGINE_BROWSER_TOOLS } : {}),
+        messages: compressed,
+      }),
+    })
+    if (res.status === 429) {
+      if (attempt === 3) throw new Error('Rate limited after 4 retries')
+      await sleep(Math.pow(2, attempt + 1) * 1500)
+      continue
+    }
+    if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 200)}`)
+    return await res.json() as BrowserClaudeResponse
+  }
+  throw new Error('Max retries exceeded')
+}
+
+// ── Browser agent executor ─────────────────────────────────────────────────────
+async function executeBrowserAgent(
+  agent: MAAgent,
+  keys: ProviderKeys,
+  onOutputUpdate: (full: string) => void,
+): Promise<{ output: string; provider: LLMProvider; modelLabel: string }> {
+  const apiKey = keys.anthropic ?? ''
+  if (!apiKey) throw new Error('Browser agents require an Anthropic API key — add it in the Providers panel.')
+
+  let out = '🌐 Connecting to Browser Hand...\n'
+  onOutputUpdate(out)
+
+  const health = await ptHealthEngine()
+  if (!health.ok) {
+    throw new Error('Browser Hand (PinchTab) is not connected. Set up PinchTab in the Hands page first, then retry.')
+  }
+  if (!health.instanceId) {
+    throw new Error('PinchTab is running but no browser instance was found. Open the Hands page to start a browser session.')
+  }
+
+  const instanceId = health.instanceId
+  let tabId = ''
+
+  out += `✓ Connected (instance: ${instanceId})\n\n`
+  onOutputUpdate(out)
+
+  const executeToolCall = async (name: string, input: Record<string, unknown>): Promise<string> => {
+    switch (name) {
+      case 'browser_navigate': {
+        const url = input.url as string
+        out += `→ navigate: ${url}\n`
+        onOutputUpdate(out)
+        tabId = await ptOpenTabEngine(instanceId, url)
+        await sleep(1800)
+        return `Navigated to ${url}`
+      }
+      case 'browser_snapshot': {
+        if (!tabId) return 'No tab open yet — call browser_navigate first.'
+        out += `→ snapshot: reading page elements\n`
+        onOutputUpdate(out)
+        return ptSnapshotEngine(tabId)
+      }
+      case 'browser_read': {
+        if (!tabId) return 'No tab open yet — call browser_navigate first.'
+        out += `→ read: extracting page text\n`
+        onOutputUpdate(out)
+        return ptTextEngine(tabId)
+      }
+      case 'browser_click': {
+        if (!tabId) return 'No tab open yet — call browser_navigate first.'
+        out += `→ click: [${input.ref}]\n`
+        onOutputUpdate(out)
+        const result = await ptClickEngine(tabId, input.ref as string)
+        await sleep(1000)
+        return result
+      }
+      case 'browser_fill': {
+        if (!tabId) return 'No tab open yet — call browser_navigate first.'
+        const preview = String(input.value).slice(0, 40)
+        out += `→ fill: [${input.ref}] = "${preview}"\n`
+        onOutputUpdate(out)
+        return ptFillEngine(tabId, input.ref as string, input.value as string)
+      }
+      default:
+        return `Unknown tool: ${name}`
+    }
+  }
+
+  const messages: BrowserMessageParam[] = [
+    {
+      role: 'user',
+      content: `You are an autonomous browser agent. Complete this task using the browser tools:\n\n${agent.task}\n\nWORKFLOW:\n1. Start with browser_navigate to open a URL\n2. Use browser_snapshot to see interactive elements and their ref IDs\n3. Use browser_click or browser_fill with exact ref IDs from the snapshot\n4. Use browser_read to extract page content\n\nCRITICAL: Never guess ref IDs — always call browser_snapshot first. When you have gathered enough information, provide a comprehensive final answer.`,
+    },
+  ]
+
+  let iterations = 0
+  const MAX_ITERATIONS = 20
+  let finalText = ''
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++
+    const isLast = iterations >= MAX_ITERATIONS
+
+    const data = await callClaudeWithBrowserTools(apiKey, BROWSER_LOOP_MODEL, messages, true)
+
+    if (data.stop_reason === 'end_turn' || isLast) {
+      out += '\nSynthesizing findings...\n'
+      onOutputUpdate(out)
+      const finalData = await callClaudeWithBrowserTools(apiKey, BROWSER_FINAL_MODEL, [
+        ...messages,
+        { role: 'assistant', content: data.content },
+        { role: 'user', content: 'You have finished browsing. Write your final comprehensive answer based on everything gathered. Plain prose, no markdown.' },
+      ], false)
+      finalText = (finalData.content.find((b): b is BrowserTextBlock => b.type === 'text'))?.text ?? ''
+      break
+    }
+
+    if (data.stop_reason === 'tool_use') {
+      const toolBlocks = data.content.filter((b): b is BrowserToolUseBlock => b.type === 'tool_use')
+      const toolResults: BrowserToolResult[] = []
+
+      for (const block of toolBlocks) {
+        let result = ''
+        try {
+          result = await executeToolCall(block.name, block.input)
+        } catch (e) {
+          result = `Error: ${e instanceof Error ? e.message : String(e)}`
+          out += `⚠ ${block.name} failed: ${result}\n`
+          onOutputUpdate(out)
+        }
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
+      }
+
+      messages.push({ role: 'assistant', content: data.content })
+      messages.push({ role: 'user', content: toolResults })
+    }
+  }
+
+  out += '\n' + finalText
+  onOutputUpdate(out)
+
+  return { output: out, provider: 'anthropic', modelLabel: 'browser-hand' }
 }
 
 // ── Streaming functions ────────────────────────────────────────────────────────
@@ -526,7 +815,7 @@ Return ONLY valid JSON, no markdown:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, browser (only assign browser when the task explicitly needs live/real-time web data — current prices, today's news, live site content)
 
 Rules:
 - Maximize parallel execution (minimize dependsOn chains)
@@ -582,6 +871,7 @@ function workerSystem(role: AgentRole, name: string, complexity: TaskComplexity,
     coder:      `You are ${name}, a Code Agent running on ${id}. Write clean, well-commented, working code. ${tone} No markdown fences.`,
     reviewer:   `You are ${name}, a Review Agent running on ${id}. Critically evaluate work, identify strengths, weaknesses, improvements. ${tone} Plain text only.`,
     summarizer: `You are ${name}, a Summarizer Agent running on ${id}. Extract and condense the most important information. ${tone} Plain text only.`,
+    browser:    `You are ${name}, a Browser Agent running on ${id}. You autonomously navigate live websites using browser tools to gather real-time information. Use browser_navigate → browser_read/browser_snapshot → browser_click/browser_fill in sequence. Never guess ref IDs. ${tone}`,
   }
   return prompts[role] ?? prompts.researcher
 }
@@ -622,10 +912,13 @@ interface PlanAgent {
 function planAgentToMAAgent(p: PlanAgent, pos: { x: number; y: number }, availableProviders: LLMProvider[]): MAAgent {
   const complexity: TaskComplexity = (['simple', 'medium', 'complex', 'expert'].includes(p.complexity ?? ''))
     ? (p.complexity as TaskComplexity) : 'medium'
-  const provider: LLMProvider = (p.provider && availableProviders.includes(p.provider as LLMProvider))
-    ? (p.provider as LLMProvider) : availableProviders[0]
-  const cfg = PROVIDER_MODELS[provider][complexity]
   const role: AgentRole = (p.role as AgentRole) in ROLE_COLORS ? (p.role as AgentRole) : 'researcher'
+  // Browser agents always use Anthropic (tool-use loop is Anthropic-specific)
+  const provider: LLMProvider = role === 'browser'
+    ? 'anthropic'
+    : (p.provider && availableProviders.includes(p.provider as LLMProvider))
+      ? (p.provider as LLMProvider) : availableProviders[0]
+  const cfg = PROVIDER_MODELS[provider][complexity]
   return {
     id: p.id, name: p.name, role,
     status: 'idle', complexity, provider,
@@ -668,12 +961,16 @@ async function executeWorkers(
       update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'working' } : a) }))
 
       try {
-        const result = await streamWithFailover(
-          agent, system, userMsg, keys, availableProviders,
-          fullOutput => {
-            update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, output: fullOutput } : a) }))
-          },
-        )
+        const result = agent.role === 'browser'
+          ? await executeBrowserAgent(agent, keys, fullOutput => {
+              update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, output: fullOutput } : a) }))
+            })
+          : await streamWithFailover(
+              agent, system, userMsg, keys, availableProviders,
+              fullOutput => {
+                update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, output: fullOutput } : a) }))
+              },
+            )
 
         // If failover switched providers, update the agent's provider + modelLabel in state
         if (result.provider !== agent.provider) {
