@@ -33,6 +33,12 @@
 
 ---
 
+## Demo
+
+[![Demo](https://cdn.loom.com/sessions/thumbnails/fc32d9dee8314226b9e9cd32e31baf50-with-play.gif)](https://www.loom.com/share/fc32d9dee8314226b9e9cd32e31baf50)
+
+---
+
 ## What is Agentis?
 
 Agentis is a **browser-native multi-agent AI platform**. You describe a task — Agentis spawns a coordinated team of specialized AI agents across multiple LLM providers, visualises their live thinking on an animated canvas, and synthesizes everything into one clean answer.
