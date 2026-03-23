@@ -196,6 +196,9 @@ export function loadAllProviderKeys(): ProviderKeys {
     const v = localStorage.getItem(`${SETTINGS_KEY_PREFIX}${p}`) ?? ''
     if (v) (keys as Record<string, string>)[p] = v
   }
+  // Tavily is a tool key, not an LLM provider — stored separately
+  const tavily = localStorage.getItem(`${SETTINGS_KEY_PREFIX}tavily`) ?? ''
+  if (tavily) keys.tavily = tavily
   return keys
 }
 

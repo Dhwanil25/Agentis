@@ -223,6 +223,7 @@ function RightPanel({
 }: RightPanelProps) {
   const [tab, setTab] = useState<'team' | 'output'>('team')
   const [collapsed, setCollapsed] = useState(false)
+  const [showTavilyKey, setShowTavilyKey] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const selectedAgent = agents.find(a => a.id === selectedId) as MAAgent | undefined
   const lastMsg = messages[messages.length - 1]
@@ -371,12 +372,18 @@ function RightPanel({
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
                 <input
-                  type="password"
+                  type={showTavilyKey ? 'text' : 'password'}
                   placeholder="tvly-..."
                   value={providerKeys.tavily ?? ''}
                   onChange={e => updateProviderKey('tavily' as LLMProvider, e.target.value)}
                   style={{ flex: 1, fontSize: 10, padding: '4px 7px', borderRadius: 5, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--fg)' }}
                 />
+                <button
+                  onClick={() => setShowTavilyKey(v => !v)}
+                  style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer', color: 'var(--muted)', flexShrink: 0 }}
+                >
+                  {showTavilyKey ? 'Hide' : 'Show'}
+                </button>
                 {providerKeys.tavily && (
                   <button onClick={onTestTavily} disabled={tavilyTestStatus === 'testing'} style={{ fontSize: 8.5, padding: '2px 6px', background: tavilyTestStatus === 'ok' ? '#10b98122' : tavilyTestStatus === 'fail' ? '#ef444422' : 'rgba(255,255,255,0.06)', border: `1px solid ${tavilyTestStatus === 'ok' ? '#10b98155' : tavilyTestStatus === 'fail' ? '#ef444455' : 'var(--border)'}`, borderRadius: 5, cursor: tavilyTestStatus === 'testing' ? 'default' : 'pointer', color: tavilyTestStatus === 'ok' ? '#10b981' : tavilyTestStatus === 'fail' ? '#ef4444' : 'var(--muted)', fontWeight: 600 }}>
                     {tavilyTestStatus === 'testing' ? '…' : 'Test'}
