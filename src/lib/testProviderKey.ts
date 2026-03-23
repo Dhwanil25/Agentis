@@ -2,6 +2,20 @@ import type { LLMProvider } from './multiAgentEngine'
 
 export type TestResult = 'idle' | 'testing' | 'ok' | 'fail'
 
+export async function testTavilyKey(key: string): Promise<'ok' | 'fail'> {
+  if (!key.trim()) return 'fail'
+  try {
+    const res = await fetch('/tavily-proxy/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key, query: 'test', max_results: 1 }),
+    })
+    return res.ok ? 'ok' : 'fail'
+  } catch {
+    return 'fail'
+  }
+}
+
 export async function testProviderKey(provider: LLMProvider, key: string): Promise<'ok' | 'fail'> {
   if (!key.trim()) return 'fail'
   try {

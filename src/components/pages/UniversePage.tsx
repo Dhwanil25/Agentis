@@ -6,7 +6,7 @@ import {
 } from '@/lib/multiAgentEngine'
 import { addMemory } from '@/lib/memory'
 import { Universe3D } from '@/components/Universe3D'
-import { testProviderKey, type TestResult } from '@/lib/testProviderKey'
+import { testProviderKey, testTavilyKey, type TestResult } from '@/lib/testProviderKey'
 import { loadSessions, saveSession, deleteSession, type ChatSession } from '@/lib/chatHistory'
 
 interface Props { apiKey: string }
@@ -209,6 +209,8 @@ interface RightPanelProps {
   updateProviderKey: (p: LLMProvider, v: string) => void
   onTestKey: (p: LLMProvider) => void
   testStatus: Partial<Record<LLMProvider, TestResult>>
+  tavilyTestStatus: TestResult
+  onTestTavily: () => void
 }
 
 function RightPanel({
@@ -217,7 +219,7 @@ function RightPanel({
   selectedId, setSelectedId, followUp, setFollowUp,
   savedToMemory, copiedOutput, providerKeys, providersOpen, setProvidersOpen,
   activeProviders, messages, browserEnabled, onToggleBrowser, onLaunch, onFollowUp, onSaveMemory, onCopyOutput,
-  onExportMd, onExportTxt, onDeepDive, updateProviderKey, onTestKey, testStatus,
+  onExportMd, onExportTxt, onDeepDive, updateProviderKey, onTestKey, testStatus, tavilyTestStatus, onTestTavily,
 }: RightPanelProps) {
   const [tab, setTab] = useState<'team' | 'output'>('team')
   const [collapsed, setCollapsed] = useState(false)
@@ -358,7 +360,35 @@ function RightPanel({
                 )
               })}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--muted)', opacity: 0.65 }}>
+            {/* Tavily web search key */}
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#0ea5e9', boxShadow: providerKeys.tavily ? '0 0 4px #0ea5e9' : 'none', opacity: providerKeys.tavily ? 1 : 0.35 }} />
+                <span style={{ fontSize: 9, fontWeight: 600, color: providerKeys.tavily ? '#0ea5e9' : 'var(--muted)' }}>Tavily · Web Search</span>
+                {tavilyTestStatus === 'ok'      && <span style={{ fontSize: 8, color: '#10b981', marginLeft: 'auto' }}>✓ Valid</span>}
+                {tavilyTestStatus === 'fail'    && <span style={{ fontSize: 8, color: '#ef4444', marginLeft: 'auto' }}>✕ Invalid</span>}
+                {tavilyTestStatus === 'testing' && <span style={{ fontSize: 8, color: 'var(--muted)', marginLeft: 'auto' }}>testing…</span>}
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  type="password"
+                  placeholder="tvly-..."
+                  value={providerKeys.tavily ?? ''}
+                  onChange={e => updateProviderKey('tavily' as LLMProvider, e.target.value)}
+                  style={{ flex: 1, fontSize: 10, padding: '4px 7px', borderRadius: 5, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--fg)' }}
+                />
+                {providerKeys.tavily && (
+                  <button onClick={onTestTavily} disabled={tavilyTestStatus === 'testing'} style={{ fontSize: 8.5, padding: '2px 6px', background: tavilyTestStatus === 'ok' ? '#10b98122' : tavilyTestStatus === 'fail' ? '#ef444422' : 'rgba(255,255,255,0.06)', border: `1px solid ${tavilyTestStatus === 'ok' ? '#10b98155' : tavilyTestStatus === 'fail' ? '#ef444455' : 'var(--border)'}`, borderRadius: 5, cursor: tavilyTestStatus === 'testing' ? 'default' : 'pointer', color: tavilyTestStatus === 'ok' ? '#10b981' : tavilyTestStatus === 'fail' ? '#ef4444' : 'var(--muted)', fontWeight: 600 }}>
+                    {tavilyTestStatus === 'testing' ? '…' : 'Test'}
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 8.5, color: 'var(--muted)', marginTop: 4, opacity: 0.7 }}>
+                Gives researcher &amp; analyst agents live web search
+              </div>
+            </div>
+
+            <div style={{ fontSize: 9, color: 'var(--muted)', opacity: 0.65, marginTop: 6 }}>
               Synced with Settings · agents auto-distributed
             </div>
           </div>
@@ -786,6 +816,7 @@ export function UniversePage({ apiKey }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [browserEnabled, setBrowserEnabled] = useState(false)
+  const [tavilyTestStatus, setTavilyTestStatus] = useState<TestResult>('idle')
 
 
   // Sync apiKey prop → Settings localStorage if not already set
@@ -806,6 +837,7 @@ export function UniversePage({ apiKey }: Props) {
     setProviderKeys(loadAllProviderKeys())
     // Reset test result when key changes
     setTestStatus(prev => { const next = { ...prev }; delete next[provider]; return next })
+    if (provider === 'tavily' as LLMProvider) setTavilyTestStatus('idle')
   }
 
   const handleTestKey = async (provider: LLMProvider) => {
@@ -814,6 +846,14 @@ export function UniversePage({ apiKey }: Props) {
     setTestStatus(prev => ({ ...prev, [provider]: 'testing' }))
     const result = await testProviderKey(provider, key)
     setTestStatus(prev => ({ ...prev, [provider]: result }))
+  }
+
+  const handleTestTavily = async () => {
+    const key = providerKeys.tavily ?? ''
+    if (!key) return
+    setTavilyTestStatus('testing')
+    const result = await testTavilyKey(key)
+    setTavilyTestStatus(result)
   }
 
   const hasAnyKey = Object.values(providerKeys).some(v => !!v)
@@ -1039,6 +1079,8 @@ export function UniversePage({ apiKey }: Props) {
           updateProviderKey={updateProviderKey}
           onTestKey={p => void handleTestKey(p)}
           testStatus={testStatus}
+          tavilyTestStatus={tavilyTestStatus}
+          onTestTavily={() => void handleTestTavily()}
         />
       </div>
     </div>

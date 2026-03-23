@@ -23,6 +23,7 @@ export interface ProviderKeys {
   together?: string
   ollama?: string    // endpoint URL, default http://localhost:11434
   lmstudio?: string  // endpoint URL, default http://localhost:1234
+  tavily?: string    // web search tool key
 }
 
 // ── Provider metadata ──────────────────────────────────────────────────────────
@@ -942,6 +943,27 @@ function planAgentToMAAgent(p: PlanAgent, pos: { x: number; y: number }, availab
   }
 }
 
+// ── Tavily web search ──────────────────────────────────────────────────────────
+async function tavilySearch(query: string, apiKey: string): Promise<string> {
+  try {
+    const res = await fetch('/tavily-proxy/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5, include_answer: true }),
+    })
+    if (!res.ok) return ''
+    const data = await res.json() as { answer?: string; results?: { title: string; url: string; content: string }[] }
+    const parts: string[] = []
+    if (data.answer) parts.push(`Summary: ${data.answer}`)
+    if (data.results?.length) {
+      parts.push(data.results.map(r => `[${r.title}](${r.url})\n${r.content}`).join('\n\n'))
+    }
+    return parts.join('\n\n')
+  } catch {
+    return ''
+  }
+}
+
 // ── Worker execution ──────────────────────────────────────────────────────────
 async function executeWorkers(
   workers: MAAgent[],
@@ -950,6 +972,7 @@ async function executeWorkers(
   keys: ProviderKeys,
   availableProviders: LLMProvider[],
   update: MAUpdater,
+  tavilyKey?: string,
 ): Promise<Record<string, string>> {
   const outputs: Record<string, string> = { ...preloadedOutputs }
   const completed = new Set<string>(Object.keys(preloadedOutputs))
@@ -968,7 +991,17 @@ async function executeWorkers(
         return w ? `[${w.name}]:\n${outputs[d] ?? '(pending)'}` : ''
       }).filter(Boolean).join('\n\n---\n\n')
 
-      const userMsg = context ? `Your task: ${agent.task}\n\nContext from upstream agents:\n${context}` : agent.task
+      // Inject live web search results for researcher/analyst agents
+      let webContext = ''
+      if (tavilyKey && (agent.role === 'researcher' || agent.role === 'analyst')) {
+        webContext = await tavilySearch(agent.task, tavilyKey)
+      }
+
+      const userMsg = [
+        agent.task,
+        webContext ? `\n\nLive web search results:\n${webContext}` : '',
+        context ? `\n\nContext from upstream agents:\n${context}` : '',
+      ].join('')
       const system = workerSystem(agent.role, agent.name, agent.complexity, agent.provider, PROVIDER_MODELS[agent.provider][agent.complexity].label)
 
       update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'working' } : a) }))
@@ -1079,7 +1112,7 @@ export async function runMultiAgentTask(
   }))
 
   await sleep(400)
-  const outputs = await executeWorkers(workers, {}, workers, keys, availableProviders, update)
+  const outputs = await executeWorkers(workers, {}, workers, keys, availableProviders, update, keys.tavily)
 
   update(s => ({
     ...s, phase: 'synthesizing',
@@ -1187,7 +1220,7 @@ export async function runFollowUpTask(
   }))
 
   const allWorkerDefs = [...currentState.agents.filter(a => a.id !== ORCH), ...newWorkers]
-  const outputs = await executeWorkers([...recalledWorkers, ...newWorkers], preloadedOutputs, allWorkerDefs, keys, availableProviders, update)
+  const outputs = await executeWorkers([...recalledWorkers, ...newWorkers], preloadedOutputs, allWorkerDefs, keys, availableProviders, update, keys.tavily)
 
   update(s => ({
     ...s, phase: 'synthesizing',
