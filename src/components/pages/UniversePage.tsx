@@ -220,6 +220,7 @@ function RightPanel({
   onExportMd, onExportTxt, onDeepDive, updateProviderKey, onTestKey, testStatus,
 }: RightPanelProps) {
   const [tab, setTab] = useState<'team' | 'output'>('team')
+  const [collapsed, setCollapsed] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const selectedAgent = agents.find(a => a.id === selectedId) as MAAgent | undefined
   const lastMsg = messages[messages.length - 1]
@@ -238,11 +239,40 @@ function RightPanel({
 
   return (
     <div style={{
-      width: 360, flexShrink: 0,
-      borderLeft: '1px solid var(--border)',
+      width: collapsed ? 0 : 360,
+      minWidth: collapsed ? 0 : 360,
+      flexShrink: 0,
+      borderLeft: collapsed ? 'none' : '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
-      background: 'var(--sidebar-bg)', overflow: 'hidden',
+      background: 'var(--sidebar-bg)',
+      overflow: 'hidden',
+      transition: 'width 0.25s ease, min-width 0.25s ease',
+      position: 'relative',
     }}>
+
+      {/* ── Collapse toggle ─────────────────────────────────────────────── */}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        title={collapsed ? 'Show panel' : 'Hide panel'}
+        style={{
+          position: 'absolute', top: '50%', left: collapsed ? 0 : -14,
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          width: 14, height: 40,
+          background: 'var(--sidebar-bg)',
+          border: '1px solid var(--border)',
+          borderRight: collapsed ? '1px solid var(--border)' : 'none',
+          borderRadius: collapsed ? '6px 0 0 6px' : '6px 0 0 6px',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--muted)',
+          fontSize: 9,
+          padding: 0,
+          transition: 'left 0.25s ease',
+        }}
+      >
+        {collapsed ? '›' : '‹'}
+      </button>
 
       {/* ── Providers bar (always compact) ─────────────────────────────── */}
       <div style={{ borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -576,14 +606,62 @@ function RightPanel({
       {/* ── Output tab ─────────────────────────────────────────────────── */}
       {tab === 'output' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {!hasOutput ? (
+          {(phase === 'planning' || phase === 'executing') && (
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8b5cf6', marginBottom: 10 }}>
+                {phase === 'planning' ? 'Planning team...' : 'Agents working'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {agents.filter(a => a.id !== 'orchestrator').length === 0 ? (
+                  // Planning phase — no workers yet, show orchestrator thinking
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                      background: '#8b5cf6',
+                      boxShadow: '0 0 8px #8b5cf6',
+                      animation: 'blink 0.8s step-end infinite',
+                    }} />
+                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>Orchestrator is planning the team...</span>
+                  </div>
+                ) : (
+                  agents.filter(a => a.id !== 'orchestrator').map(ag => {
+                    const color = ROLE_COLORS[ag.role] ?? '#888'
+                    const isActive = ag.status === 'thinking' || ag.status === 'working'
+                    const isDone = ag.status === 'done'
+                    const statusText = isDone ? 'done' : isActive ? 'working...' : 'queued'
+                    return (
+                      <div key={ag.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                          background: isDone ? '#10b981' : isActive ? color : 'var(--muted)',
+                          boxShadow: isActive ? `0 0 8px ${color}` : 'none',
+                          opacity: isDone ? 0.7 : 1,
+                          animation: isActive ? 'blink 0.8s step-end infinite' : 'none',
+                        }} />
+                        <span style={{ fontSize: 11, color: isActive ? 'var(--fg)' : 'var(--muted)', flex: 1 }}>
+                          {ag.name}
+                          <span style={{ color: 'var(--muted)', marginLeft: 4, fontSize: 10 }}>·</span>
+                          <span style={{ color: isActive ? color : 'var(--muted)', marginLeft: 4, fontSize: 10 }}>{ag.role}</span>
+                        </span>
+                        <span style={{ fontSize: 9.5, color: isDone ? '#10b981' : isActive ? color : 'var(--muted)', fontWeight: 600 }}>
+                          {isDone ? '✓' : isActive ? '●' : '○'} {statusText}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {!hasOutput && phase !== 'planning' && phase !== 'executing' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 28, opacity: 0.1, marginBottom: 10 }}>✦</div>
               <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
                 Output will appear here<br />once the agents finish.
               </div>
             </div>
-          ) : (
+          ) : hasOutput ? (
             <>
               {/* Output header */}
               <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -684,7 +762,7 @@ function RightPanel({
                 </div>
               )}
             </>
-          )}
+          ) : null}
         </div>
       )}
     </div>

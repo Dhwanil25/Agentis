@@ -1126,7 +1126,7 @@ export async function runFollowUpTask(
   const existingIds = currentState.agents.filter(a => a.id !== ORCH).map(a => a.id)
 
   update(s => ({
-    ...s, phase: 'planning',
+    ...s, phase: 'planning', finalOutput: '',
     agents: s.agents.map(a => a.id === ORCH ? { ...a, status: 'thinking', output: '' } : a),
   }))
 
