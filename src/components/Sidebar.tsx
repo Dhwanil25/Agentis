@@ -119,9 +119,7 @@ const ICONS: Record<string, JSX.Element> = {
 
 export function Sidebar({ current, navigate, engineRunning }: Props) {
   const [agents, setAgents] = useState<Agent[]>([])
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    AGENTS: true, // collapsed by default since it's in the reference
-  })
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!engineRunning) { setAgents([]); return }
@@ -187,121 +185,99 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
 
   return (
     <div style={{
-      width: 220,
-      flexShrink: 0,
-      background: 'var(--sidebar-bg)',
+      width: 220, flexShrink: 0,
+      background: 'linear-gradient(180deg, rgba(12,12,22,0.98) 0%, rgba(8,8,16,0.98) 100%)',
       borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      height: '100vh', overflow: 'hidden',
+      position: 'relative', zIndex: 2,
+      backdropFilter: 'blur(20px)',
     }}>
       {/* Logo block */}
-      <div style={{
-        padding: '18px 16px 14px',
-        borderBottom: '1px solid var(--border)',
-        flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <img
-            src="/favicon.png"
-            alt="Agentis"
-            style={{ width: 30, height: 30, borderRadius: 7, objectFit: 'contain', flexShrink: 0 }}
-          />
+      <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 16px rgba(99,102,241,0.4)',
+          }}>
+            <img src="/favicon.png" alt="Agentis" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+          </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', letterSpacing: '0.06em' }}>AGENTIS</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>v0.2</div>
+            <div style={{
+              fontSize: 13, fontWeight: 800, letterSpacing: '0.1em',
+              background: 'linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>AGENTIS</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)' }}>v0.2 · Multi-Agent AI</div>
           </div>
         </div>
 
-        {/* Agent status row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-              background: engineRunning ? 'var(--green)' : '#555',
-              display: 'inline-block',
-            }} />
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-              {runningCount} agent{runningCount !== 1 ? 's' : ''} running
-            </span>
-          </div>
-          <span className="badge badge-accent" style={{ fontSize: 9, padding: '2px 7px' }}>HTTP</span>
+        {/* Status row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 10px', borderRadius: 8,
+          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+            background: engineRunning ? 'var(--green)' : 'var(--muted)',
+            display: 'inline-block',
+            boxShadow: engineRunning ? '0 0 6px var(--green)' : 'none',
+          }} />
+          <span style={{ fontSize: 11, color: 'var(--muted)', flex: 1 }}>
+            {runningCount > 0 ? `${runningCount} running` : 'No agents running'}
+          </span>
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, color: '#6366f1',
+            background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+            padding: '1px 6px', borderRadius: 10, letterSpacing: '0.06em',
+          }}>HTTP</span>
         </div>
       </div>
 
       {/* Nav */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 8px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px 8px' }}>
         {sections.map(section => {
           const isCollapsed = collapsed[section.label]
           return (
-            <div key={section.label} style={{ marginBottom: 4 }}>
-              {/* Section header */}
+            <div key={section.label} style={{ marginBottom: 2 }}>
               <button
                 onClick={() => toggleSection(section.label)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '8px 16px 4px',
+                  width: '100%', padding: '7px 8px 4px',
                   background: 'none', border: 'none', cursor: 'pointer',
                 }}
               >
-                <span style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-                  textTransform: 'uppercase', color: 'var(--muted)',
-                }}>
+                <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(107,114,128,0.7)' }}>
                   {section.label}
                 </span>
-                <svg
-                  width="10" height="10" viewBox="0 0 10 10"
-                  style={{ color: 'var(--muted)', opacity: 0.5, transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s' }}
-                >
+                <svg width="9" height="9" viewBox="0 0 10 10" style={{ color: 'var(--muted)', opacity: 0.4, transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s' }}>
                   <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
 
-              {/* Nav items */}
               {!isCollapsed && section.items.map(item => {
                 const isActive = current === item.id
                 return (
                   <button
                     key={item.id}
                     onClick={() => navigate(item.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 11,
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '11px 16px',
-                      background: isActive ? 'var(--accent)' : 'none',
-                      border: 'none',
-                      borderRadius: isActive ? 0 : 0,
-                      color: isActive ? '#fff' : 'var(--muted)',
-                      fontSize: 14,
-                      fontWeight: isActive ? 600 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 0.1s',
-                      fontFamily: 'var(--font-sans)',
-                    }}
-                    onMouseEnter={e => {
-                      if (!isActive) {
-                        const t = e.currentTarget
-                        t.style.color = 'var(--fg)'
-                        t.style.background = 'rgba(255,255,255,0.04)'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (!isActive) {
-                        const t = e.currentTarget
-                        t.style.color = 'var(--muted)'
-                        t.style.background = 'none'
-                      }
-                    }}
+                    className={`sidebar-nav-item${isActive ? ' active' : ''}`}
                   >
-                    <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', opacity: isActive ? 1 : 0.65 }}>
+                    <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', opacity: isActive ? 1 : 0.55, color: isActive ? '#818cf8' : 'currentColor', transition: 'opacity 0.15s' }}>
                       {item.icon}
                     </span>
-                    {item.name}
+                    <span style={{ fontSize: 13 }}>{item.name}</span>
+                    {isActive && (
+                      <div style={{
+                        marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%',
+                        background: 'var(--accent)',
+                        boxShadow: '0 0 6px var(--accent)',
+                      }} />
+                    )}
                   </button>
                 )
               })}
@@ -310,13 +286,9 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
         })}
       </div>
 
-      {/* Bottom hint */}
-      <div style={{
-        padding: '10px 16px',
-        borderTop: '1px solid var(--border)',
-        flexShrink: 0,
-      }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.02em' }}>
+      {/* Bottom */}
+      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--muted)', opacity: 0.6, letterSpacing: '0.02em' }}>
           Ctrl+K agents
         </div>
       </div>

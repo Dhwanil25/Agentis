@@ -115,7 +115,7 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(W, H)
-    renderer.setClearColor(0x05050e, 1)
+    renderer.setClearColor(0x080818, 1)
     mount.appendChild(renderer.domElement)
     rendRef.current = renderer
 
@@ -149,7 +149,7 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
       )
     }
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3))
-    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.18, sizeAttenuation: true, transparent: true, opacity: 0.8 })
+    const starMat = new THREE.PointsMaterial({ color: 0xaaaaff, size: 0.25, sizeAttenuation: true, transparent: true, opacity: 0.9 })
     const stars = new THREE.Points(starGeo, starMat)
     scene.add(stars)
     starsRef.current = stars
@@ -461,14 +461,25 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
       {state.phase === 'idle' && (
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
         }}>
-          <div style={{ fontSize: 52, opacity: 0.1 }}>✦</div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.15)', textAlign: 'center', lineHeight: 1.8, maxWidth: 280 }}>
-            Enter a task and launch to deploy<br />a coordinated team of AI agents
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.1) 60%, transparent 100%)',
+            border: '1px solid rgba(99,102,241,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 40px rgba(99,102,241,0.15)',
+          }}>
+            <div style={{ fontSize: 28, color: 'rgba(139,92,246,0.8)' }}>✦</div>
           </div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.08)', marginTop: 4 }}>
-            drag to orbit · scroll to zoom
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 1.6 }}>
+            Agent Universe
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.8, maxWidth: 260 }}>
+            Enter a task in the panel →<br />and launch a team of AI agents
+          </div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', marginTop: 4, letterSpacing: '0.06em' }}>
+            DRAG TO ORBIT · SCROLL TO ZOOM
           </div>
         </div>
       )}

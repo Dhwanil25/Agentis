@@ -23,9 +23,13 @@ type Page =
   | 'channels' | 'skills' | 'hands' | 'universe' | 'settings'
 
 export default function App() {
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY ?? '')
+  const [apiKey, setApiKey] = useState(() => {
+    return import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem('agentis_apikey') || ''
+  })
   const [keyInput, setKeyInput] = useState('')
-  const [keySet, setKeySet] = useState(!!import.meta.env.VITE_ANTHROPIC_API_KEY)
+  const [keySet, setKeySet] = useState(() => {
+    return !!(import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem('agentis_apikey'))
+  })
   const [page, setPage] = useState<Page>('overview')
   const [engineRunning, setEngineRunning] = useState(false)
 
@@ -130,6 +134,7 @@ export default function App() {
             onChange={e => setKeyInput(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && keyInput.startsWith('sk-')) {
+                localStorage.setItem('agentis_apikey', keyInput)
                 setApiKey(keyInput)
                 setKeySet(true)
               }
@@ -145,7 +150,7 @@ export default function App() {
           <button
             className="btn-primary"
             disabled={!keyInput.startsWith('sk-')}
-            onClick={() => { setApiKey(keyInput); setKeySet(true) }}
+            onClick={() => { localStorage.setItem('agentis_apikey', keyInput); setApiKey(keyInput); setKeySet(true) }}
             style={{ width: '100%', padding: '10px', fontSize: 14 }}
           >
             Continue
@@ -234,6 +239,8 @@ export default function App() {
           <SettingsPage
             apiKey={apiKey}
             onApiKeyChange={key => {
+              if (key) localStorage.setItem('agentis_apikey', key)
+              else localStorage.removeItem('agentis_apikey')
               setApiKey(key)
               if (key.startsWith('sk-') && !keySet) setKeySet(true)
             }}

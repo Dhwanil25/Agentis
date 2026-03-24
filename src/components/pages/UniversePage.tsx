@@ -452,17 +452,17 @@ function RightPanel({
         </button>
 
         <button
-          className="btn-primary"
+          className="btn-launch"
           onClick={() => onLaunch()}
           disabled={!task.trim() || !hasAnyKey || running}
-          style={{ width: '100%', fontSize: 13, padding: '9px 0', borderRadius: 8 }}
         >
           {running ? (
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'currentColor', opacity: 0.6, animation: 'blink 0.8s step-end infinite' }} />
-              Running...
+              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'currentColor', opacity: 0.8, animation: 'blink 0.6s step-end infinite' }} />
+              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'currentColor', opacity: 0.8, animation: 'blink 0.6s step-end infinite', animationDelay: '0.2s' }} />
+              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'currentColor', opacity: 0.8, animation: 'blink 0.6s step-end infinite', animationDelay: '0.4s' }} />
             </span>
-          ) : 'Launch Agent Team'}
+          ) : '⚡ Launch Agent Team'}
         </button>
         {!hasAnyKey && (
           <div style={{ fontSize: 10.5, color: '#ef4444', marginTop: 7, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -506,11 +506,10 @@ function RightPanel({
 
           {/* Selected agent detail (inline card) */}
           {selectedAgent && (
-            <div style={{
-              margin: '12px 14px 0',
-              background: 'rgba(255,255,255,0.04)',
-              border: `1px solid ${ROLE_COLORS[selectedAgent.role]}33`,
-              borderRadius: 10, overflow: 'hidden', flexShrink: 0,
+            <div className="glass-card" style={{
+              margin: '12px 10px 0',
+              borderColor: `${ROLE_COLORS[selectedAgent.role]}44`,
+              flexShrink: 0,
             }}>
               {/* Card header */}
               <div style={{
@@ -561,12 +560,12 @@ function RightPanel({
           <div style={{ flex: 1, padding: '10px 0 4px' }}>
             {agents.length === 0 ? (
               <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-                <div style={{ fontSize: 28, opacity: 0.1, marginBottom: 10 }}>◎</div>
+                <div className="float-icon" style={{ fontSize: 32, opacity: 0.15, marginBottom: 12 }}>◎</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
                   No agents deployed yet.<br />Launch a task to spawn the team.
                 </div>
               </div>
-            ) : agents.map(ag => {
+            ) : agents.map((ag, idx) => {
               const color = ROLE_COLORS[ag.role] ?? '#888'
               const isActive = ag.status === 'thinking' || ag.status === 'working'
               const isDone = ag.status === 'done'
@@ -574,58 +573,66 @@ function RightPanel({
               const isRecalled = ag.status === 'recalled'
               const isSel = ag.id === selectedId
               const statusColor = isDone ? '#10b981' : isErr ? '#ef4444' : isRecalled ? '#a855f7' : isActive ? color : 'var(--muted)'
-
               const maAg = ag as MAAgent
+
               return (
                 <button
                   key={ag.id}
                   onClick={() => setSelectedId(selectedId === ag.id ? null : ag.id)}
+                  className={`agent-card${isSel ? ' selected' : ''}${isActive ? ' active' : ''}`}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    width: '100%', textAlign: 'left',
-                    padding: '9px 16px',
-                    background: isSel ? 'rgba(255,255,255,0.05)' : 'none',
-                    border: 'none',
-                    borderLeft: `2px solid ${isSel ? color : isActive ? color : 'transparent'}`,
-                    cursor: 'pointer', fontFamily: 'var(--font-sans)', transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.025)' }}
-                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'none' }}
+                    '--card-color': color,
+                    animationDelay: `${idx * 40}ms`,
+                  } as React.CSSProperties}
                 >
-                  {/* Status dot */}
-                  <div style={{
-                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0, marginTop: 1,
-                    background: isErr ? '#ef4444' : color,
-                    boxShadow: isActive ? `0 0 8px ${color}` : 'none',
-                    opacity: isDone ? 0.9 : isActive ? 1 : 0.5,
-                  }} />
-                  {/* Name + model row */}
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ag.name}
-                      </span>
-                      <span style={{ fontSize: 9, color, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
-                        {ag.role}
-                      </span>
-                    </div>
-                    {maAg.provider && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 9.5, color: PROVIDER_COLORS[maAg.provider], fontWeight: 600, flexShrink: 0 }}>
-                          {PROVIDER_LABELS[maAg.provider]}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {/* Glow dot */}
+                    <div
+                      className={`glow-dot${isActive ? ' active' : ''}`}
+                      style={{
+                        background: isErr ? '#ef4444' : isDone ? '#10b981' : color,
+                        color: isErr ? '#ef4444' : isDone ? '#10b981' : color,
+                        boxShadow: isActive ? `0 0 8px ${color}88` : isDone ? '0 0 5px #10b98166' : 'none',
+                        opacity: isActive ? 1 : isDone ? 0.85 : 0.45,
+                      }}
+                    />
+                    {/* Name + role */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ag.name}
                         </span>
-                        {maAg.modelLabel && (
-                          <span style={{ fontSize: 9.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            · {maAg.modelLabel}
-                          </span>
-                        )}
+                        <span style={{
+                          fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
+                          color: color, background: `${color}18`, border: `1px solid ${color}33`,
+                          padding: '1px 5px', borderRadius: 4, flexShrink: 0,
+                        }}>
+                          {ag.role}
+                        </span>
                       </div>
-                    )}
+                      {maAg.provider && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: PROVIDER_COLORS[maAg.provider], flexShrink: 0 }} />
+                          <span style={{ fontSize: 9.5, color: PROVIDER_COLORS[maAg.provider], fontWeight: 600 }}>
+                            {PROVIDER_LABELS[maAg.provider]}
+                          </span>
+                          {maAg.modelLabel && (
+                            <span style={{ fontSize: 9.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              · {maAg.modelLabel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* Status pill */}
+                    <div style={{
+                      fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}33`,
+                      padding: '2px 6px', borderRadius: 20, flexShrink: 0,
+                    }}>
+                      {isRecalled ? '⟳ recall' : isDone ? '✓ done' : isErr ? '✕ error' : isActive ? '● live' : '○ idle'}
+                    </div>
                   </div>
-                  {/* Status label */}
-                  <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: statusColor, flexShrink: 0 }}>
-                    {isRecalled ? '⟳' : isDone ? '✓' : isErr ? '✕' : isActive ? '…' : '—'}
-                  </span>
                 </button>
               )
             })}
@@ -693,8 +700,8 @@ function RightPanel({
 
           {!hasOutput && phase !== 'planning' && phase !== 'executing' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
-              <div style={{ fontSize: 28, opacity: 0.1, marginBottom: 10 }}>✦</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+              <div className="float-icon" style={{ fontSize: 32, opacity: 0.12, marginBottom: 12 }}>✦</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
                 Output will appear here<br />once the agents finish.
               </div>
             </div>
@@ -719,7 +726,7 @@ function RightPanel({
               {/* Chat history + live output */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {messages.map((msg, i) => (
-                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  <div key={i} className="chat-msg" style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', animationDelay: `${i * 30}ms` }}>
                     {msg.role === 'user' ? (
                       <div style={{
                         background: 'rgba(99,102,241,0.18)', border: '1px solid rgba(99,102,241,0.3)',
