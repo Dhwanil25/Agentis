@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import {
   type MAState, type MAAgent,
@@ -61,6 +61,129 @@ function makeCurve(a: THREE.Vector3, b: THREE.Vector3): THREE.CatmullRomCurve3 {
   return new THREE.CatmullRomCurve3([a.clone(), mid, b.clone()])
 }
 
+// ── 2D CSS fallback (used when WebGL unavailable) ──────────────────────────────
+function Universe2D({ state, selectedId, onSelectAgent }: Props) {
+  const agents = state.agents
+  const isIdle = state.phase === 'idle'
+
+  // Lay out agents in a circle around a center orchestrator
+  const cx = 50, cy = 50, r = 32
+  const workers = agents.filter(a => a.id !== 'orchestrator')
+  const orch    = agents.find(a => a.id === 'orchestrator')
+
+  const workerPositions = workers.map((_, i) => {
+    const angle = (i / Math.max(workers.length, 1)) * 2 * Math.PI - Math.PI / 2
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+  })
+
+  return (
+    <div style={{
+      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
+      background: 'radial-gradient(ellipse at 50% 60%, rgba(99,102,241,0.07) 0%, rgba(8,8,24,0.0) 70%)',
+    }}>
+      {/* SVG for lines */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        {/* Connections from workers to orchestrator */}
+        {orch && workerPositions.map((wp, idx2) => {
+          const ag = workers[idx2]
+          const color = ROLE_COLORS[ag.role] ?? '#6366f1'
+          const active = ag.status === 'working' || ag.status === 'thinking'
+          return (
+            <line key={ag.id}
+              x1={wp.x} y1={wp.y} x2={cx} y2={cy}
+              stroke={color} strokeWidth={active ? 0.5 : 0.2}
+              strokeOpacity={active ? 0.7 : 0.25}
+              strokeDasharray={active ? '2 1' : undefined}
+            />
+          )
+        })}
+        {/* Idle ring */}
+        {isIdle && (
+          <circle cx={cx} cy={cy} r={r} fill="none"
+            stroke="rgba(99,102,241,0.12)" strokeWidth="0.4" strokeDasharray="2 3" />
+        )}
+      </svg>
+
+      {/* Agent nodes */}
+      {agents.map((ag) => {
+        const isOrch = ag.id === 'orchestrator'
+        const idx    = workers.indexOf(ag as typeof workers[0])
+        const pos    = isOrch ? { x: cx, y: cy } : workerPositions[idx] ?? { x: cx, y: cy }
+        const color  = ROLE_COLORS[ag.role] ?? '#6366f1'
+        const active = ag.status === 'working' || ag.status === 'thinking'
+        const done   = ag.status === 'done'
+        const sel    = selectedId === ag.id
+        const size   = isOrch ? 7 : 4.5
+
+        return (
+          <div key={ag.id}
+            onClick={() => onSelectAgent(sel ? null : ag.id)}
+            style={{
+              position: 'absolute',
+              left: `${pos.x}%`, top: `${pos.y}%`,
+              transform: 'translate(-50%, -50%)',
+              cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              zIndex: sel ? 10 : 1,
+            }}
+          >
+            {/* Node circle */}
+            <div style={{
+              width: size * 8, height: size * 8, borderRadius: '50%',
+              background: `radial-gradient(circle at 35% 35%, ${color}cc, ${color}55)`,
+              border: `${sel ? 2 : 1}px solid ${color}${sel ? 'ff' : '88'}`,
+              boxShadow: active
+                ? `0 0 ${isOrch ? 20 : 12}px ${color}88, 0 0 ${isOrch ? 40 : 20}px ${color}33`
+                : `0 0 ${isOrch ? 12 : 6}px ${color}44`,
+              animation: active ? 'pulseGlow 1.8s ease-in-out infinite' : undefined,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.3s ease',
+            }}>
+              {isOrch && <div style={{ fontSize: isOrch ? 14 : 9, color: '#fff', opacity: 0.9 }}>✦</div>}
+            </div>
+            {/* Label */}
+            <div style={{ textAlign: 'center', pointerEvents: 'none' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: color, letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                textShadow: `0 0 8px ${color}88` }}>
+                {ag.name}
+              </div>
+              {!isOrch && (
+                <div style={{ fontSize: 7.5, color: done ? '#10b981' : active ? color : 'rgba(255,255,255,0.3)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>
+                  {ag.status}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Idle hint */}
+      {isIdle && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+        }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)',
+            border: '1px solid rgba(99,102,241,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 40px rgba(99,102,241,0.15)',
+            animation: 'pulseGlow 3s ease-in-out infinite',
+          }}>
+            <div style={{ fontSize: 26, color: 'rgba(139,92,246,0.85)' }}>✦</div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>Agent Universe</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 1.7, maxWidth: 220 }}>
+            Enter a task in the panel →<br />to deploy a team of AI agents
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
   const mountRef   = useRef<HTMLDivElement>(null)
@@ -97,6 +220,9 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
   // Positions
   const posRef     = useRef<Map<string, THREE.Vector3>>(new Map())
 
+  // WebGL availability
+  const [webglError, setWebglError] = useState(false)
+
   // State / selected refs for animation loop
   const stateRef   = useRef(state)
   stateRef.current = state
@@ -111,8 +237,28 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
     const W = mount.clientWidth  || 800
     const H = mount.clientHeight || 600
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    // Renderer — pre-check WebGL support before Three.js tries
+    const testCanvas = document.createElement('canvas')
+    const testGl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl')
+    if (!testGl) {
+      setWebglError(true)
+      return
+    }
+
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    } catch {
+      setWebglError(true)
+      return
+    }
+
+    // Also catch degraded contexts (e.g. GPU blocklisted, software renderer failure)
+    if (renderer.getContext().isContextLost()) {
+      renderer.dispose()
+      setWebglError(true)
+      return
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(W, H)
     renderer.setClearColor(0x080818, 1)
@@ -436,6 +582,8 @@ export function Universe3D({ state, selectedId, onSelectAgent }: Props) {
   const handleWheel = (e: React.WheelEvent) => {
     orbitRef.current.r = Math.max(10, Math.min(30, orbitRef.current.r + e.deltaY * 0.025))
   }
+
+  if (webglError) return <Universe2D state={state} selectedId={selectedId} onSelectAgent={onSelectAgent} />
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
