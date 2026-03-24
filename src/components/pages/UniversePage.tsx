@@ -6,6 +6,8 @@ import {
 } from '@/lib/multiAgentEngine'
 import { addMemory } from '@/lib/memory'
 import { Universe3D } from '@/components/Universe3D'
+import { FlowGraph } from '@/components/FlowGraph'
+import { TimelinePanel } from '@/components/TimelinePanel'
 import { testProviderKey, testTavilyKey, type TestResult } from '@/lib/testProviderKey'
 import { loadSessions, saveSession, deleteSession, type ChatSession } from '@/lib/chatHistory'
 
@@ -819,6 +821,7 @@ export function UniversePage({ apiKey }: Props) {
   const [task, setTask] = useState('')
   const [running, setRunning] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'3d' | 'flow'>('flow')
   const [followUp, setFollowUp] = useState('')
   const [savedToMemory, setSavedToMemory] = useState(false)
   const [copiedOutput, setCopiedOutput] = useState(false)
@@ -989,6 +992,11 @@ export function UniversePage({ apiKey }: Props) {
   const doneCount = agents.filter(a => a.status === 'done').length
   const activeProviders = PROVIDER_ORDER.filter(p => providerKeys[p])
 
+  const totalTokensIn  = agents.reduce((s, a) => s + (a.tokensIn  ?? 0), 0)
+  const totalTokensOut = agents.reduce((s, a) => s + (a.tokensOut ?? 0), 0)
+  const totalTokens = totalTokensIn + totalTokensOut
+  const totalCost = maState.totalCostUsd ?? 0
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
@@ -1010,10 +1018,47 @@ export function UniversePage({ apiKey }: Props) {
               {doneCount}/{agents.length} agents done
             </span>
           )}
+          {totalTokens > 0 && (
+            <>
+              <span style={{ width: 1, height: 12, background: 'var(--border)', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'monospace' }}>
+                {totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : totalTokens} tokens
+              </span>
+              {totalCost > 0 && (
+                <span style={{
+                  fontSize: 10, padding: '2px 7px', borderRadius: 12,
+                  background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
+                  color: '#10b981', fontFamily: 'monospace', fontWeight: 600,
+                }}>
+                  ~${totalCost < 0.01 ? totalCost.toFixed(4) : totalCost.toFixed(3)}
+                </span>
+              )}
+            </>
+          )}
         </div>
-        {phase !== 'idle' && (
-          <button className="btn-ghost" onClick={handleReset} style={{ fontSize: 12 }}>Reset</button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* View toggle */}
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 6, padding: 2, gap: 2 }}>
+            {(['flow', '3d'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 4,
+                  letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+                  border: 'none', transition: 'all 0.15s',
+                  background: viewMode === mode ? 'rgba(99,102,241,0.3)' : 'transparent',
+                  color: viewMode === mode ? '#a5b4fc' : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                {mode === 'flow' ? '⬡ Flow' : '⬤ 3D'}
+              </button>
+            ))}
+          </div>
+          {phase !== 'idle' && (
+            <button className="btn-ghost" onClick={handleReset} style={{ fontSize: 12 }}>Reset</button>
+          )}
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -1029,13 +1074,15 @@ export function UniversePage({ apiKey }: Props) {
           onNew={handleReset}
         />
 
-        {/* ── Universe 3D ───────────────────────────────────────────────── */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-          <Universe3D
-            state={maState}
-            selectedId={selectedId}
-            onSelectAgent={setSelectedId}
-          />
+        {/* ── Canvas + Timeline column ───────────────────────────────────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            {viewMode === 'flow'
+              ? <FlowGraph state={maState} selectedId={selectedId} onSelectAgent={setSelectedId} />
+              : <Universe3D state={maState} selectedId={selectedId} onSelectAgent={setSelectedId} />
+            }
+          </div>
+          <TimelinePanel state={maState} />
         </div>
 
         {/* ── Right Panel ───────────────────────────────────────────────── */}

@@ -161,23 +161,62 @@ export interface MAAgent {
   dependsOn: string[]
   x: number
   y: number
+  startTs?: number
+  endTs?: number
+  tokensIn?: number
+  tokensOut?: number
+  costUsd?: number
 }
 
 export interface MAMessage {
   id: string; fromId: string; toId: string; content: string; ts: number
 }
 
+export interface MAToolCall {
+  id: string
+  agentId: string
+  tool: string
+  label: string
+  status: 'running' | 'done' | 'error'
+  startTs: number
+  endTs?: number
+}
+
 export interface MAState {
   phase: 'idle' | 'planning' | 'executing' | 'synthesizing' | 'done' | 'error'
   agents: MAAgent[]
   messages: MAMessage[]
+  toolCalls: MAToolCall[]
   finalOutput: string
   errorMsg: string
   totalAgents: number
+  totalCostUsd: number
 }
 
 export const INITIAL_MA_STATE: MAState = {
-  phase: 'idle', agents: [], messages: [], finalOutput: '', errorMsg: '', totalAgents: 0,
+  phase: 'idle', agents: [], messages: [], toolCalls: [], finalOutput: '', errorMsg: '', totalAgents: 0, totalCostUsd: 0,
+}
+
+// ── Token pricing (per 1M tokens) ─────────────────────────────────────────────
+// [inputPer1M, outputPer1M] in USD
+const TOKEN_PRICES: Record<string, [number, number]> = {
+  'claude-haiku-4-5':   [0.80,   4.00],
+  'claude-sonnet-4-6':  [3.00,  15.00],
+  'claude-opus-4-6':    [15.00, 75.00],
+  'gpt-4.1-nano':       [0.10,   0.40],
+  'gpt-4.1-mini':       [0.40,   1.60],
+  'gpt-4.1':            [2.00,   8.00],
+  'gemini-2.0-flash':   [0.075,  0.30],
+  'gemini-2.5-flash':   [0.15,   0.60],
+  'gemini-2.5-pro':     [1.25,   5.00],
+  'llama-3.1-8b-instant':    [0.05,  0.08],
+  'llama-3.3-70b-versatile': [0.59,  0.79],
+}
+
+function estimateCost(modelLabel: string, tokensIn: number, tokensOut: number): number {
+  const prices = TOKEN_PRICES[modelLabel]
+  if (!prices) return 0
+  return (tokensIn * prices[0] + tokensOut * prices[1]) / 1_000_000
 }
 
 export type MAUpdater = (fn: (prev: MAState) => MAState) => void
@@ -388,6 +427,7 @@ async function executeBrowserAgent(
   agent: MAAgent,
   keys: ProviderKeys,
   onOutputUpdate: (full: string) => void,
+  update?: MAUpdater,
 ): Promise<{ output: string; provider: LLMProvider; modelLabel: string }> {
   const apiKey = keys.anthropic ?? ''
   if (!apiKey) throw new Error('Browser agents require an Anthropic API key — add it in the Providers panel.')
@@ -486,12 +526,20 @@ async function executeBrowserAgent(
 
       for (const block of toolBlocks) {
         let result = ''
+        const tcId = makeId()
+        const tcLabel = block.name === 'browser_navigate' ? String(block.input.url ?? '').slice(0, 45)
+          : block.name === 'browser_click' ? `click [${block.input.ref}]`
+          : block.name === 'browser_fill'  ? `fill [${block.input.ref}]`
+          : block.name.replace('browser_', '')
+        update?.(s => ({ ...s, toolCalls: [...(s.toolCalls ?? []), { id: tcId, agentId: agent.id, tool: block.name, label: tcLabel, status: 'running' as const, startTs: Date.now() }] }))
         try {
           result = await executeToolCall(block.name, block.input)
+          update?.(s => ({ ...s, toolCalls: (s.toolCalls ?? []).map(tc => tc.id === tcId ? { ...tc, status: 'done' as const, endTs: Date.now() } : tc) }))
         } catch (e) {
           result = `Error: ${e instanceof Error ? e.message : String(e)}`
           out += `⚠ ${block.name} failed: ${result}\n`
           onOutputUpdate(out)
+          update?.(s => ({ ...s, toolCalls: (s.toolCalls ?? []).map(tc => tc.id === tcId ? { ...tc, status: 'error' as const, endTs: Date.now() } : tc) }))
         }
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
@@ -513,6 +561,7 @@ async function executeBrowserAgent(
 async function streamAnthropic(
   modelId: string, system: string, userMsg: string, apiKey: string, maxTokens: number,
   onToken: (t: string) => void,
+  onUsage?: (tokensIn: number, tokensOut: number) => void,
 ): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -527,6 +576,7 @@ async function streamAnthropic(
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`)
   if (!res.body) throw new Error('No response body')
   let out = ''
+  let tokensIn = 0, tokensOut = 0
   const reader = res.body.getReader(); const dec = new TextDecoder()
   outer: while (true) {
     const { done, value } = await reader.read(); if (done) break
@@ -534,11 +584,23 @@ async function streamAnthropic(
       if (!line.startsWith('data: ')) continue
       const data = line.slice(6).trim(); if (data === '[DONE]') break outer
       try {
-        const ev = JSON.parse(data) as { type: string; delta?: { text?: string } }
+        const ev = JSON.parse(data) as {
+          type: string
+          delta?: { text?: string }
+          message?: { usage?: { input_tokens?: number } }
+          usage?: { output_tokens?: number }
+        }
+        if (ev.type === 'message_start' && ev.message?.usage?.input_tokens) {
+          tokensIn = ev.message.usage.input_tokens
+        }
+        if (ev.type === 'message_delta' && ev.usage?.output_tokens) {
+          tokensOut = ev.usage.output_tokens
+        }
         if (ev.type === 'content_block_delta' && ev.delta?.text) { out += ev.delta.text; onToken(ev.delta.text) }
       } catch { /* skip */ }
     }
   }
+  if (onUsage && (tokensIn || tokensOut)) onUsage(tokensIn, tokensOut)
   return out
 }
 
@@ -698,10 +760,11 @@ async function streamOpenAICompat(
 async function streamLLM(
   provider: LLMProvider, modelId: string, system: string, userMsg: string,
   keys: ProviderKeys, maxTokens: number, onToken: (t: string) => void,
+  onUsage?: (tokensIn: number, tokensOut: number) => void,
 ): Promise<string> {
   const key = (keys as Record<string, string>)[provider] ?? ''
   switch (provider) {
-    case 'anthropic': return streamAnthropic(modelId, system, userMsg, key, maxTokens, onToken)
+    case 'anthropic': return streamAnthropic(modelId, system, userMsg, key, maxTokens, onToken, onUsage)
     case 'google':    return streamGoogle(modelId, system, userMsg, key, maxTokens, onToken)
     case 'cohere':    return streamCohere(modelId, system, userMsg, key, maxTokens, onToken)
     case 'ollama':    return streamOllama(modelId, system, userMsg, key, onToken)
@@ -720,6 +783,7 @@ async function streamWithFailover(
   keys: ProviderKeys,
   availableProviders: LLMProvider[],
   onOutputUpdate: (fullOutput: string) => void,
+  onUsage?: (tokensIn: number, tokensOut: number) => void,
 ): Promise<{ output: string; provider: LLMProvider; modelLabel: string }> {
   // Order: assigned provider first, then the rest (skip providers without keys)
   const tryOrder = [
@@ -745,7 +809,7 @@ async function streamWithFailover(
       await streamLLM(provider, cfg.modelId, system, userMsg, keys, cfg.maxTokens, delta => {
         out += delta
         onOutputUpdate(out)
-      })
+      }, onUsage)
 
       // Treat suspiciously short output as a failure (e.g. Ollama model not loaded)
       const textContent = out.replace(/^↻[^\n]+\n\n/, '').trim()
@@ -986,7 +1050,7 @@ async function executeWorkers(
     if (ready.length === 0) break
 
     await Promise.all(ready.map(async agent => {
-      update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'thinking' } : a) }))
+      update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'thinking', startTs: a.startTs ?? Date.now() } : a) }))
       await sleep(150 + Math.random() * 250)
 
       const context = agent.dependsOn.map(d => {
@@ -997,7 +1061,10 @@ async function executeWorkers(
       // Inject live web search results for researcher/analyst agents
       let webContext = ''
       if (tavilyKey && (agent.role === 'researcher' || agent.role === 'analyst')) {
+        const searchTcId = makeId()
+        update(s => ({ ...s, toolCalls: [...(s.toolCalls ?? []), { id: searchTcId, agentId: agent.id, tool: 'web_search', label: agent.task.slice(0, 45), status: 'running' as const, startTs: Date.now() }] }))
         webContext = await tavilySearch(agent.task, tavilyKey)
+        update(s => ({ ...s, toolCalls: (s.toolCalls ?? []).map(tc => tc.id === searchTcId ? { ...tc, status: 'done' as const, endTs: Date.now() } : tc) }))
       }
 
       const userMsg = [
@@ -1009,17 +1076,26 @@ async function executeWorkers(
 
       update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'working' } : a) }))
 
+      const llmTcId = makeId()
+      update(s => ({ ...s, toolCalls: [...(s.toolCalls ?? []), { id: llmTcId, agentId: agent.id, tool: 'llm_call', label: agent.modelLabel, status: 'running' as const, startTs: Date.now() }] }))
+
       try {
+        let agentTokensIn = 0, agentTokensOut = 0
+
         const result = agent.role === 'browser'
           ? await executeBrowserAgent(agent, keys, fullOutput => {
               update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, output: fullOutput } : a) }))
-            })
+            }, update)
           : await streamWithFailover(
               agent, system, userMsg, keys, availableProviders,
               fullOutput => {
                 update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, output: fullOutput } : a) }))
               },
+              (tIn, tOut) => { agentTokensIn = tIn; agentTokensOut = tOut },
             )
+
+        // Compute cost for this agent
+        const agentCost = estimateCost(result.modelLabel, agentTokensIn, agentTokensOut)
 
         // If failover switched providers, update the agent's provider + modelLabel in state
         if (result.provider !== agent.provider) {
@@ -1036,12 +1112,17 @@ async function executeWorkers(
           }))
         }
 
+        update(s => ({ ...s, toolCalls: (s.toolCalls ?? []).map(tc => tc.id === llmTcId ? { ...tc, status: 'done' as const, endTs: Date.now() } : tc) }))
         outputs[agent.id] = result.output
         completed.add(agent.id); remaining.delete(agent.id)
 
         update(s => ({
           ...s,
-          agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'done' } : a),
+          totalCostUsd: (s.totalCostUsd ?? 0) + agentCost,
+          agents: s.agents.map(a => a.id === agent.id ? {
+            ...a, status: 'done', endTs: Date.now(),
+            tokensIn: agentTokensIn, tokensOut: agentTokensOut, costUsd: agentCost,
+          } : a),
           messages: [...s.messages, {
             id: makeId(), fromId: agent.id, toId: 'orchestrator',
             content: `${agent.name} finished via ${PROVIDER_LABELS[result.provider]}`, ts: Date.now(),
@@ -1049,7 +1130,10 @@ async function executeWorkers(
         }))
       } catch (e) {
         // All providers exhausted
-        update(s => ({ ...s, agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'error', output: String(e) } : a) }))
+        update(s => ({ ...s,
+          toolCalls: (s.toolCalls ?? []).map(tc => tc.id === llmTcId ? { ...tc, status: 'error' as const, endTs: Date.now() } : tc),
+          agents: s.agents.map(a => a.id === agent.id ? { ...a, status: 'error', output: String(e), endTs: Date.now() } : a),
+        }))
         completed.add(agent.id); remaining.delete(agent.id); return
       }
 
