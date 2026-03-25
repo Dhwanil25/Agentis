@@ -17,9 +17,13 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - uses: anthropics/claude-code-action@beta
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           direct_prompt: |
             You are a senior engineer reviewing a pull request for Agentis — an open-source multi-agent AI platform built with React, TypeScript, and Vite.
 

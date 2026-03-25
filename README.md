@@ -12,7 +12,7 @@
 
 <br />
 
-[![Version](https://img.shields.io/badge/version-0.2.0-orange?style=flat-square)](https://github.com/Dhwanil25/Agentis/releases/tag/v0.2.0)
+[![Version](https://img.shields.io/badge/version-0.3.0-orange?style=flat-square)](https://github.com/Dhwanil25/Agentis/releases/tag/v0.3.0)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
@@ -70,6 +70,23 @@ Agentis orchestrator plans:
 - **Smart tier selection** — orchestrator assigns `simple → fast model`, `complex → frontier model` per task
 - **Auto-failover** — when a provider goes down mid-task, agents switch to the next available one automatically, zero data loss
 - **Persistent universe** — follow-up questions recall relevant old agents and add new ones; knowledge compounds across turns
+
+### ⬡ Agent Flow View
+- **Hexagonal agent nodes** — distinct visual identity per agent with role-based color coding
+- **Curved bezier edges** — animated particle flow along curved connections between agents and tools
+- **Live thought bubbles** — active agents display their last output snippet in a glassmorphism overlay in real time
+- **Token progress bars** — visual indicator under each agent node showing output token usage
+- **Tool call diamonds** — web search, LLM calls, and browser actions rendered as animated diamond nodes
+
+### 📊 Timeline Panel
+- **Horizontal timeline** — shows every agent's start/end as a color-coded bar
+- **Tool call markers** — overlaid on each agent's track showing exactly when web searches, LLM calls, and browser actions fired
+- **Live duration counter** — active agents show elapsed time in seconds
+
+### 💰 Token & Cost Tracking
+- **Per-agent token counts** — real input/output token data captured from Anthropic's SSE stream
+- **Cost estimation** — per-agent and session-total cost calculated from live token counts and model pricing
+- **Header metrics bar** — total tokens and estimated cost (`~$X.XXX`) displayed live in the canvas header
 
 ### 🧠 Synthesis Engine
 - Orchestrator plans agent topology, delegates subtasks, then merges all outputs
@@ -163,8 +180,10 @@ VITE_ANTHROPIC_API_KEY=sk-ant-...
 
 | File | Purpose |
 |---|---|
-| `src/lib/multiAgentEngine.ts` | Orchestration, streaming, provider failover, synthesis |
-| `src/components/pages/UniversePage.tsx` | Canvas rendering, agent cards, post-analysis panel |
+| `src/lib/multiAgentEngine.ts` | Orchestration, streaming, provider failover, token tracking, synthesis |
+| `src/components/pages/UniversePage.tsx` | Canvas rendering, agent cards, metrics bar, post-analysis panel |
+| `src/components/FlowGraph.tsx` | 2D canvas flow graph — hexagonal nodes, bezier edges, thought bubbles |
+| `src/components/TimelinePanel.tsx` | Horizontal timeline — agent bars + tool call markers |
 | `src/components/pages/SettingsPage.tsx` | All 12 providers, model browser, memory, migration UI |
 | `src/lib/memory.ts` | Persistent memory — localStorage + optional PocketBase |
 | `vite-plugin-agentis.ts` | Vite middleware: engine daemon, migration endpoints |
@@ -220,9 +239,12 @@ Or use **Enter Path Manually** to specify a custom source directory.
 
 ## Roadmap
 
+- [x] Agent Flow view — hexagonal nodes, bezier edges, thought bubbles
+- [x] Timeline panel — per-agent activity bars + tool call markers
+- [x] Token & cost tracking — live per-agent token counts and cost estimation
+- [ ] Token tracking for non-Anthropic providers (OpenAI, Google, Groq, etc.)
 - [ ] Agent-to-agent direct messaging (A2X protocol)
 - [ ] Scheduled workflows (cron-style agent runs)
-- [ ] Browser hand — agents that can browse the web
 - [ ] Shareable agent universes (export + replay)
 - [ ] Native desktop app (Tauri)
 
@@ -241,6 +263,15 @@ npm run lint   # ESLint check
 ---
 
 ## Changelog
+
+### v0.3.0 — March 2026
+- Agent Flow view with hexagonal nodes, quadratic bezier curved edges, and animated particles
+- Live thought bubbles — active agents show real-time output snippets on the canvas
+- Token progress bars under each agent node
+- Timeline panel — horizontal activity bars with tool call markers per agent
+- Per-agent token & cost tracking via Anthropic SSE usage events
+- Header metrics bar — total tokens and estimated session cost shown live
+- Claude PR review workflow with automated code review on every pull request
 
 ### v0.2.0 — March 2026
 - Multi-provider Agent Universe (12 providers, exact model names on canvas)
