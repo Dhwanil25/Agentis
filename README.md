@@ -8,7 +8,7 @@
 
 <p><strong>Most AI tools give you one model and one answer. Agentis gives you a team.</strong></p>
 
-<p>Deploy fleets of specialized agents — researchers, coders, analysts, writers, and more — across 12 LLM providers simultaneously. Each agent works its angle, shares findings, and hands off to the next. You watch it all unfold in a live 3D universe, in real time. Open source, provider-agnostic, and built for tasks that are too big for a single prompt.</p>
+<p>Deploy fleets of specialized agents — researchers, coders, analysts, writers, and more — across 12 LLM providers simultaneously. Each agent works its angle, shares findings, and hands off to the next. Watch it unfold live with hexagonal agent nodes, curved edges, real-time thought bubbles, and per-agent token tracking. Open source, provider-agnostic, and built for tasks that are too big for a single prompt.</p>
 
 <br />
 
@@ -125,7 +125,7 @@ Agentis orchestrator plans:
 
 ### Prerequisites
 - Node.js 18+
-- At least one API key (or Ollama running locally — free)
+- At least one LLM provider API key (or Ollama running locally — free)
 
 ### Install & run
 
@@ -136,7 +136,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173), paste any API key, and launch your first universe.
+Open [http://localhost:5173](http://localhost:5173), paste any API key, and launch your first agent team.
 
 ### Optional: skip the key gate
 
@@ -144,6 +144,15 @@ Open [http://localhost:5173](http://localhost:5173), paste any API key, and laun
 # .env.local
 VITE_ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+### Optional features
+
+| Feature | What's needed |
+|---|---|
+| Web search | Free [Tavily](https://tavily.com) API key |
+| Browser agent | `npm install -g pinchtab && pinchtab server` |
+| Local models | [Ollama](https://ollama.ai) or [LM Studio](https://lmstudio.ai) running locally |
+| Team memory sync | Optional [PocketBase](https://pocketbase.io) instance |
 
 ---
 
