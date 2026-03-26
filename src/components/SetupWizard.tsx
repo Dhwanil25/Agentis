@@ -516,7 +516,8 @@ export function SetupWizard({ apiKey, onClose, onSaveApiKey, navigate }: Props) 
     setTestStatus('testing')
     setTestError('')
     try {
-      if (selectedProvider === 'anthropic' || draftKey.startsWith('sk-ant')) {
+      if (selectedProvider === 'anthropic') {
+        // Direct call required — Anthropic needs the special browser-access header
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -531,21 +532,43 @@ export function SetupWizard({ apiKey, onClose, onSaveApiKey, navigate }: Props) 
           const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
           throw new Error(body?.error?.message ?? `HTTP ${res.status}`)
         }
-      } else if (selectedProvider === 'openai' || draftKey.startsWith('sk-')) {
-        const res = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+      } else if (selectedProvider === 'openai') {
+        const res = await fetch('/openai-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
         if (!res.ok) { const b = await res.json().catch(() => ({})) as { error?: { message?: string } }; throw new Error(b?.error?.message ?? `HTTP ${res.status}`) }
       } else if (selectedProvider === 'groq') {
-        const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        const res = await fetch('/groq-proxy/openai/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
       } else if (selectedProvider === 'google') {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${draftKey}`)
+        const res = await fetch(`/google-proxy/v1beta/models?key=${draftKey}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
       } else if (selectedProvider === 'cohere') {
-        const res = await fetch('https://api.cohere.com/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        const res = await fetch('/cohere-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
       } else if (selectedProvider === 'mistral') {
-        const res = await fetch('https://api.mistral.ai/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        const res = await fetch('/mistral-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      } else if (selectedProvider === 'deepseek') {
+        const res = await fetch('/deepseek-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      } else if (selectedProvider === 'openrouter') {
+        const res = await fetch('/openrouter-proxy/api/v1/auth/key', { headers: { Authorization: `Bearer ${draftKey}` } })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      } else if (selectedProvider === 'xai') {
+        const res = await fetch('/xai-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      } else if (selectedProvider === 'together') {
+        const res = await fetch('/together-proxy/v1/models', { headers: { Authorization: `Bearer ${draftKey}` } })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      } else if (selectedProvider === 'ollama') {
+        const base = draftKey.replace(/\/$/, '') || 'http://localhost:11434'
+        const res = await fetch(`${base}/api/tags`)
+        if (!res.ok) throw new Error('Ollama not reachable')
+      } else if (selectedProvider === 'lmstudio') {
+        const base = draftKey.replace(/\/$/, '') || 'http://localhost:1234'
+        const res = await fetch(`${base}/v1/models`)
+        if (!res.ok) throw new Error('LM Studio not reachable')
+      } else {
+        throw new Error('API key validation not supported for this provider — save and test manually')
       }
       // success
       setTestStatus('ok')
@@ -738,7 +761,7 @@ export function SetupWizard({ apiKey, onClose, onSaveApiKey, navigate }: Props) 
                       p={p}
                       selected={selectedProvider === p.id}
                       ready={configuredProviders.has(p.id)}
-                      onClick={() => { setSelectedProvider(p.id === selectedProvider ? '' : p.id); setTestStatus('idle'); setTestError('') }}
+                      onClick={() => { setSelectedProvider(p.id === selectedProvider ? '' : p.id); setDraftKey(''); setTestStatus('idle'); setTestError('') }}
                     />
                   ))}
                 </div>

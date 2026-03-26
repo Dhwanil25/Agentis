@@ -10,6 +10,7 @@ import { FlowGraph } from '@/components/FlowGraph'
 import { TimelinePanel } from '@/components/TimelinePanel'
 import { testProviderKey, testTavilyKey, type TestResult } from '@/lib/testProviderKey'
 import { loadSessions, saveSession, deleteSession, type ChatSession } from '@/lib/chatHistory'
+import { addUsageRecord, calculateCost } from '@/lib/analytics'
 
 interface Props { apiKey: string }
 
@@ -920,6 +921,26 @@ export function UniversePage({ apiKey }: Props) {
       if (last?.role === 'assistant' && last.content === output) return prev
       return [...prev, { role: 'assistant', content: output }]
     })
+  }, [maState.phase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Record per-agent analytics when a Universe run completes
+  useEffect(() => {
+    if (maState.phase !== 'done') return
+    const task = taskRef.current
+    for (const agent of maState.agents) {
+      if (!agent.tokensIn && !agent.tokensOut) continue
+      const model = agent.modelLabel ?? 'claude-sonnet-4-6'
+      addUsageRecord({
+        ts: Date.now(),
+        model,
+        persona: agent.role ?? agent.id,
+        task,
+        inputTokens: agent.tokensIn ?? 0,
+        outputTokens: agent.tokensOut ?? 0,
+        cost: calculateCost(model, agent.tokensIn ?? 0, agent.tokensOut ?? 0),
+        stepCount: 1,
+      })
+    }
   }, [maState.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLaunch = async (overrideTask?: string) => {

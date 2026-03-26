@@ -41,12 +41,10 @@ export function AnalyticsPage() {
   const recent  = [...records].reverse().slice(0, 20)
 
   const topStats = [
-    { label: 'Total Tokens',   value: hasData ? formatTokens(summary?.totalTokens ?? 0)  : '0'     },
-    { label: 'Estimated Cost', value: hasData ? formatCost(summary?.totalCost ?? 0)       : '$0.00' },
-    { label: 'API Calls',      value: hasData ? String(summary?.apiCalls ?? 0)            : '0'     },
-    { label: 'Avg per Call',   value: hasData && summary && summary.apiCalls > 0
-        ? formatTokens(Math.round(summary.totalTokens / summary.apiCalls)) + ' tok'
-        : '—' },
+    { label: 'Input Tokens',   value: hasData ? formatTokens(summary?.totalInputTokens  ?? 0) : '0'     },
+    { label: 'Output Tokens',  value: hasData ? formatTokens(summary?.totalOutputTokens ?? 0) : '0'     },
+    { label: 'Estimated Cost', value: hasData ? formatCost(summary?.totalCost ?? 0)            : '$0.00' },
+    { label: 'API Calls',      value: hasData ? String(summary?.apiCalls ?? 0)                 : '0'     },
   ]
 
   return (

@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
         '/openrouter-proxy': { target: 'https://openrouter.ai',                        changeOrigin: true, rewrite: (p) => p.replace(/^\/openrouter-proxy/, '') },
         '/cohere-proxy':     { target: 'https://api.cohere.com',                       changeOrigin: true, rewrite: (p) => p.replace(/^\/cohere-proxy/, '')     },
         '/xai-proxy':        { target: 'https://api.x.ai',                             changeOrigin: true, rewrite: (p) => p.replace(/^\/xai-proxy/, '')        },
-        '/together-proxy':   { target: 'https://api.together.xyz',                     changeOrigin: true, rewrite: (p) => p.replace(/^\/together-proxy/, '')   },
+        '/together-proxy':   { target: 'https://api.together.ai',                      changeOrigin: true, rewrite: (p) => p.replace(/^\/together-proxy/, '')   },
         '/tavily-proxy':     { target: 'https://api.tavily.com',                       changeOrigin: true, rewrite: (p) => p.replace(/^\/tavily-proxy/, '')     },
       },
     },
