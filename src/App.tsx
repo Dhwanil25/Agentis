@@ -112,7 +112,7 @@ export default function App() {
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '0.02em' }}>AGENTIS</div>
               <div style={{ fontSize: 11, color: 'var(--muted)' }}>Multi-Agent AI Platform</div>
             </div>
-            <span className="badge badge-orange" style={{ marginLeft: 'auto' }}>v0.2</span>
+            <span className="badge badge-orange" style={{ marginLeft: 'auto' }}>v0.3</span>
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
