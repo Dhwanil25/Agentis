@@ -308,7 +308,7 @@ MIT © [Dhwanil25](https://github.com/Dhwanil25)
 
 <div align="center">
 
-**Your next big idea deserves more than one model. Give it a team.**
+**Your next big idea deserves more than one model. Give it a team. If you find Agentis useful, please ⭐ star the repo — it helps a lot!**
 
 Built with React · TypeScript · Vite
 
