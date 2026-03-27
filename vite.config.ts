@@ -50,6 +50,9 @@ export default defineConfig(({ mode }) => {
         '/xai-proxy':        { target: 'https://api.x.ai',                             changeOrigin: true, rewrite: (p) => p.replace(/^\/xai-proxy/, '')        },
         '/together-proxy':   { target: 'https://api.together.ai',                      changeOrigin: true, rewrite: (p) => p.replace(/^\/together-proxy/, '')   },
         '/tavily-proxy':     { target: 'https://api.tavily.com',                       changeOrigin: true, rewrite: (p) => p.replace(/^\/tavily-proxy/, '')     },
+        '/github-raw':       { target: 'https://raw.githubusercontent.com',             changeOrigin: true, rewrite: (p) => p.replace(/^\/github-raw/, '')        },
+        '/github-api':       { target: 'https://api.github.com',                         changeOrigin: true, rewrite: (p) => p.replace(/^\/github-api/, '')         },
+        '/skills-sh':        { target: 'https://skills.sh',                              changeOrigin: true, rewrite: (p) => p.replace(/^\/skills-sh/, '')          },
       },
     },
     build: {
