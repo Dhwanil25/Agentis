@@ -1,6 +1,8 @@
 // ── Multi-Agent Orchestration Engine ──────────────────────────────────────────
 // All 12 providers from Agentis Settings — exact model names on every agent.
 
+import { getSkillsForRole } from './agentSkills'
+
 export type AgentRole = 'orchestrator' | 'researcher' | 'analyst' | 'writer' | 'coder' | 'reviewer' | 'planner' | 'summarizer' | 'browser'
 export type AgentStatus = 'idle' | 'thinking' | 'working' | 'waiting' | 'done' | 'error' | 'recalled'
 export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'expert'
@@ -954,7 +956,16 @@ function workerSystem(role: AgentRole, name: string, complexity: TaskComplexity,
     summarizer: `You are ${name}, a Summarizer Agent running on ${id}. Extract and condense the most important information. ${tone} Plain text only. ${noBrowser}`,
     browser:    `You are ${name}, a Browser Agent running on ${id}. You autonomously navigate live websites using browser tools to gather real-time information. Use browser_navigate → browser_read/browser_snapshot → browser_click/browser_fill in sequence. Never guess ref IDs. ${tone}`,
   }
-  return prompts[role] ?? prompts.researcher
+  let prompt = prompts[role] ?? prompts.researcher
+
+  // Inject assigned skills for this role
+  const skills = getSkillsForRole(role)
+  if (skills.length > 0) {
+    prompt += '\n\n---\n# Specialized Skills Active\nThe following skills have been loaded to enhance your capabilities for this task:\n\n'
+    prompt += skills.map(s => `## ${s.name}\n${s.content}`).join('\n\n---\n\n')
+  }
+
+  return prompt
 }
 
 // ── Orbital layout ─────────────────────────────────────────────────────────────
