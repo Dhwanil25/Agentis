@@ -96,7 +96,7 @@ export function useAgent(apiKey: string, openfangUrl?: string) {
         setState(s => {
           // Auto-save task memory from first completed step output
           const firstOutput = s.pipeline.find(p => p.output)?.output ?? ''
-          if (firstOutput) autoSaveTaskMemory(personaId, task, firstOutput)
+          if (firstOutput) autoSaveTaskMemory(personaId, task, firstOutput).catch(() => {})
           return { ...s, loading: false, step: 'output' }
         })
         // Save token usage to analytics

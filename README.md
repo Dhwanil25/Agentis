@@ -96,9 +96,8 @@ Agentis orchestrator plans:
 ### ⚙️ Settings
 - **Providers** — configure all 12 providers with live connection testing + model recommendations per complexity tier
 - **Models** — browse all available models with pricing, context window, and availability status
-- **Memory** — searchable viewer for all stored agent memories across sessions
+- **Memory** — IndexedDB-backed persistent memory with importance scoring, decay, export/import
 - **Migration** — one-click OpenClaw → OpenFang migration (auto-detect, YAML→TOML conversion, tool remapping)
-- **Database** — optional PocketBase sync for team memory sharing
 
 ---
 
@@ -152,7 +151,28 @@ VITE_ANTHROPIC_API_KEY=sk-ant-...
 | Web search | Free [Tavily](https://tavily.com) API key |
 | Browser agent | `npm install -g pinchtab && pinchtab server` |
 | Local models | [Ollama](https://ollama.ai) or [LM Studio](https://lmstudio.ai) running locally |
-| Team memory sync | Optional [PocketBase](https://pocketbase.io) instance |
+
+---
+
+## Feature Status
+
+| Feature | Status | Notes |
+|---|---|---|
+| Agent Universe (multi-agent) | ✅ Works | Core feature, no extra setup |
+| Chat (single agent) | ✅ Works | All 12 providers |
+| Workflow Templates | ✅ Works | Pre-built multi-step pipelines |
+| Analytics (tokens + cost) | ✅ Works | Stored in IndexedDB |
+| Sessions & Memory | ✅ Works | IndexedDB, importance decay, export/import |
+| Skills (skills.sh) | ✅ Works | 90K+ skills, live search, role assignment |
+| Scheduler | ✅ Works* | *Runs in-browser only — stops if tab is closed |
+| Channels (test connectivity) | ✅ Works | Telegram, Discord, Slack, Webhook, and more |
+| Browser Agent (Hands) | ⚙️ Requires setup | Needs PinchTab running at `localhost:9867` |
+| Channels (agent-triggered send) | 🔜 Coming soon | Config and test work; auto-send from agents not yet wired |
+| Server-side Scheduler | 🔜 Coming soon | Persistent jobs that run without the browser open |
+| Agent approval gates | 🔜 Coming soon | Pause mid-task for human review |
+| Visual workflow builder | 🔜 Coming soon | Drag-and-drop pipeline editor |
+| Semantic memory search | 🔜 Coming soon | Find memories by meaning, not keywords |
+| Cross-device memory sync | 🔜 Coming soon | Sync without a server via export token |
 
 ---
 
@@ -181,7 +201,7 @@ VITE_ANTHROPIC_API_KEY=sk-ant-...
 │                           └─────────────┘                        │
 │                                                                  │
 │  Vite proxy routes → 12 provider APIs (CORS-free streaming)      │
-│  localStorage + PocketBase (opt.) → memory, keys, history        │
+│  IndexedDB (Dexie) → memory, analytics, sessions (no server)     │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -194,9 +214,26 @@ VITE_ANTHROPIC_API_KEY=sk-ant-...
 | `src/components/FlowGraph.tsx` | 2D canvas flow graph — hexagonal nodes, bezier edges, thought bubbles |
 | `src/components/TimelinePanel.tsx` | Horizontal timeline — agent bars + tool call markers |
 | `src/components/pages/SettingsPage.tsx` | All 12 providers, model browser, memory, migration UI |
-| `src/lib/memory.ts` | Persistent memory — localStorage + optional PocketBase |
+| `src/lib/db.ts` | IndexedDB schema (Dexie) — memories, analytics, sessions |
+| `src/lib/memory.ts` | Advanced memory — importance scoring, decay, categories, export/import |
 | `vite-plugin-agentis.ts` | Vite middleware: engine daemon, migration endpoints |
 | `vite.config.ts` | Proxy routes for all 12 provider APIs |
+
+---
+
+## Documentation
+
+| Doc | Description |
+|---|---|
+| [Getting Started](docs/getting-started.md) | Install, first run, quick start |
+| [Providers](docs/providers.md) | All 12 LLM providers, keys, local models |
+| [Universe](docs/universe.md) | Multi-agent system, roles, visualization |
+| [Memory](docs/memory.md) | IndexedDB memory, decay, export/import |
+| [Skills](docs/skills.md) | skills.sh integration, install, assign to roles |
+| [Workflows](docs/workflows.md) | Template system, custom templates |
+| [Channels](docs/channels.md) | Messaging integrations, coming soon features |
+| [Scheduler](docs/scheduler.md) | Recurring tasks, limitations |
+| [Architecture](docs/architecture.md) | Codebase structure, data flow, contributing |
 
 ---
 
@@ -219,8 +256,8 @@ agentis/
 │   │   └── Sidebar.tsx
 │   ├── lib/
 │   │   ├── multiAgentEngine.ts  # Core engine
-│   │   ├── memory.ts            # Memory layer
-│   │   ├── pb.ts                # PocketBase integration
+│   │   ├── db.ts                # IndexedDB schema (Dexie)
+│   │   ├── memory.ts            # Advanced memory layer
 │   │   └── claude.ts            # Anthropic streaming
 │   └── hooks/
 │       └── useAgent.ts          # Agent state machine
@@ -251,9 +288,15 @@ Or use **Enter Path Manually** to specify a custom source directory.
 - [x] Agent Flow view — hexagonal nodes, bezier edges, thought bubbles
 - [x] Timeline panel — per-agent activity bars + tool call markers
 - [x] Token & cost tracking — live per-agent token counts and cost estimation
-- [ ] Token tracking for non-Anthropic providers (OpenAI, Google, Groq, etc.)
-- [ ] Agent-to-agent direct messaging (A2X protocol)
-- [ ] Scheduled workflows (cron-style agent runs)
+- [x] Advanced memory — IndexedDB, importance scoring, decay, export/import
+- [x] Skills system — skills.sh integration, 90K+ skills, role assignments
+- [x] Scheduler — recurring agent tasks
+- [x] Channels — 15 messaging integrations with connection testing
+- [ ] Agent-triggered channel messaging (Slack/Discord/Telegram on task complete)
+- [ ] Server-side persistent scheduler (runs without browser open)
+- [ ] Agent approval gates — pause for human review mid-task
+- [ ] Visual workflow builder — drag-and-drop pipeline editor
+- [ ] Semantic memory search
 - [ ] Shareable agent universes (export + replay)
 - [ ] Native desktop app (Tauri)
 

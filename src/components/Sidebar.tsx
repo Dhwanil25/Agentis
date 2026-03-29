@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 type Page =
   | 'chat' | 'overview' | 'analytics' | 'logs' | 'sessions'
   | 'approvals' | 'comms' | 'workflows' | 'scheduler'
-  | 'channels' | 'skills' | 'hands' | 'universe' | 'settings'
+  | 'channels' | 'skills' | 'hands' | 'universe' | 'settings' | 'docs'
 
 interface Props {
   current: Page
@@ -115,6 +115,12 @@ const ICONS: Record<string, JSX.Element> = {
       <line x1="12" y1="17" x2="12" y2="21"/>
     </svg>
   ),
+  docs: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
 }
 
 export function Sidebar({ current, navigate, engineRunning }: Props) {
@@ -179,7 +185,10 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
     },
     {
       label: 'SYSTEM',
-      items: [{ id: 'settings', name: 'Settings', icon: ICONS.settings }],
+      items: [
+        { id: 'settings', name: 'Settings', icon: ICONS.settings },
+        { id: 'docs',     name: 'Docs',     icon: ICONS.docs     },
+      ],
     },
   ]
 

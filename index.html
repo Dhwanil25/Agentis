@@ -1,18 +1,725 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Agentis — AI agent powered by composable skills. Built on obra/superpowers + Claude API." />
-    <title>Agentis</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agentis — Multi-Agent AI Platform</title>
+<meta name="description" content="Deploy a coordinated team of AI agents across 12 LLM providers simultaneously. Watch them think, collaborate, and synthesize in real time."/>
+<link rel="icon" type="image/png" href="/favicon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060f; --bg2:#0a0a1a; --bg3:#0d0d20;
+  --surface:rgba(255,255,255,0.04); --surface2:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --fg:#f0f0ff; --muted:#6b7280; --dim:#4b5563;
+  --accent:#6366f1; --accent2:#8b5cf6; --green:#10b981; --red:#ef4444; --yellow:#f59e0b;
+  --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.022;pointer-events:none;z-index:999}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;padding:14px 48px;transition:background .3s,border-color .3s;border-bottom:1px solid transparent}
+nav.s{background:rgba(6,6,15,.9);backdrop-filter:blur(20px);border-color:var(--border)}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--fg);font-size:15px;font-weight:700;letter-spacing:-.02em}
+.logo img{width:26px;height:26px;border-radius:7px;object-fit:contain}
+.logo-dot{color:var(--accent)}
+.nav-r{display:flex;align-items:center;gap:28px}
+.nav-r a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s}
+.nav-r a:hover{color:var(--fg)}
+.nav-cta{padding:7px 18px;border-radius:8px;background:var(--accent);color:#fff!important;font-weight:600;font-size:13px;transition:opacity .2s,transform .15s!important}
+.nav-cta:hover{opacity:.85;transform:translateY(-1px)!important}
+
+/* ═══ HERO ═══ */
+.hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;gap:0;padding-top:72px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 80% at 30% 40%,rgba(99,102,241,.07) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 80% 60%,rgba(139,92,246,.05) 0%,transparent 60%);pointer-events:none}
+
+/* Left */
+.hero-left{display:flex;flex-direction:column;justify-content:center;padding:60px 48px 60px 52px;position:relative;z-index:10}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:4px 12px 4px 5px;border-radius:100px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.22);font-size:11.5px;color:var(--accent);font-weight:500;margin-bottom:24px;width:fit-content}
+.badge-pulse{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:bp 2s ease infinite}
+@keyframes bp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.hero-h1{font-size:clamp(34px,4.2vw,58px);font-weight:700;line-height:1.07;letter-spacing:-.03em;margin-bottom:16px}
+.hero-h1 .g{background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:15.5px;line-height:1.75;color:var(--muted);margin-bottom:32px;max-width:460px}
+
+/* Task input */
+.task-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:4px 4px 4px 16px;display:flex;align-items:center;gap:8px;margin-bottom:20px;transition:border-color .2s;max-width:500px}
+.task-box:focus-within{border-color:rgba(99,102,241,.5);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.task-box input{flex:1;background:transparent;border:none;outline:none;font-family:var(--font);font-size:14px;color:var(--fg);padding:8px 0}
+.task-box input::placeholder{color:var(--dim)}
+.launch-btn{padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:6px}
+.launch-btn:hover{opacity:.88;transform:translateY(-1px)}
+.launch-btn.running{background:linear-gradient(135deg,#374151,#1f2937);cursor:default}
+.example-tasks{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:32px}
+.ex-task{font-size:11.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--font)}
+.ex-task:hover{border-color:var(--border2);color:var(--fg);background:var(--surface)}
+.hero-meta{display:flex;gap:22px}
+.meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
+.meta-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* Right — live demo panel */
+.hero-right{display:flex;flex-direction:column;padding:80px 48px 40px 0;gap:12px;position:relative;z-index:10}
+.demo-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;flex:1;display:flex;flex-direction:column}
+.demo-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);flex-shrink:0}
+.tb-dot{width:9px;height:9px;border-radius:50%}
+.tb-title{font-size:12px;color:var(--muted);margin-left:4px;flex:1}
+.tb-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:5px}
+.tb-live{width:6px;height:6px;background:var(--green);border-radius:50%;animation:bp 1.4s ease infinite}
+.demo-body{display:flex;flex:1;min-height:0;overflow:hidden}
+.demo-canvas-wrap{flex:1;position:relative}
+#demo-canvas{width:100%;height:100%;display:block}
+.demo-feed{width:210px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.feed-header{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 12px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.feed-msgs{flex:1;overflow-y:auto;padding:6px 0;display:flex;flex-direction:column;gap:0}
+.feed-msgs::-webkit-scrollbar{display:none}
+.feed-msg{padding:6px 10px;font-size:10.5px;line-height:1.5;border-bottom:1px solid rgba(255,255,255,.03);animation:msg-in .3s ease}
+@keyframes msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.feed-from{font-weight:600;font-size:10px;margin-bottom:1px}
+.feed-text{color:var(--muted)}
+
+/* Output stream */
+.output-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;max-height:130px;overflow:hidden;flex-shrink:0}
+.output-header{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
+.output-body{padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.7;color:rgba(240,240,255,.7);overflow-y:auto;max-height:88px}
+.output-body::-webkit-scrollbar{display:none}
+.cursor{display:inline-block;width:6px;height:12px;background:var(--accent);margin-left:1px;vertical-align:text-bottom;animation:cur .8s step-end infinite}
+@keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ═══ TICKER ═══ */
+.ticker{padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:rgba(255,255,255,.015)}
+.tick-inner{display:flex;animation:tick 28s linear infinite;white-space:nowrap}
+.tick-inner:hover{animation-play-state:paused}
+.tick-item{display:inline-flex;align-items:center;gap:7px;padding:0 28px;font-size:12px;font-weight:500;color:var(--muted);flex-shrink:0}
+.tick-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ═══ LIVE ACTIVITY ═══ */
+.activity{padding:100px 48px}
+.activity-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.activity-left .section-label{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.activity-left h2{font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px}
+.activity-left p{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:28px}
+.agent-stats{display:flex;gap:24px;flex-wrap:wrap}
+.astat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:100px}
+.astat-val{font-size:26px;font-weight:700;letter-spacing:-.03em;color:var(--fg);font-variant-numeric:tabular-nums}
+.astat-val span{font-size:14px;color:var(--accent)}
+.astat-label{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Live agent list */
+.agent-list{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.agent-list-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px}
+.agent-list-header span{color:var(--muted)}
+.agent-list-header .live{color:var(--green);display:flex;align-items:center;gap:5px}
+.agent-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background .15s}
+.agent-row:last-child{border-bottom:none}
+.agent-row:hover{background:var(--surface)}
+.agent-hex{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;position:relative}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:12px;font-weight:600;color:var(--fg)}
+.agent-model{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.agent-output-preview{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.agent-status{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.status-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
+.status-working{background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.25)}
+.status-done{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.22)}
+.status-waiting{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid rgba(107,114,128,.2)}
+.agent-tokens{font-size:9px;color:var(--dim);font-family:var(--mono)}
+
+/* ═══ FEATURES ═══ */
+.features{padding:100px 48px;background:radial-gradient(ellipse 100% 50% at 50% 0%,rgba(99,102,241,.04) 0%,transparent 60%)}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.section-title{font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px}
+.section-sub{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:52px;max-width:520px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.feat-card{padding:24px;border-radius:14px;background:var(--surface);border:1px solid var(--border);transition:all .22s;position:relative;overflow:hidden}
+.feat-card:hover{border-color:var(--border2);transform:translateY(-2px);background:var(--surface2)}
+.feat-card::before{content:'';position:absolute;inset:0;border-radius:14px;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at top left,rgba(99,102,241,.07),transparent 55%)}
+.feat-card:hover::before{opacity:1}
+.feat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px}
+.feat-title{font-size:14px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.feat-desc{font-size:12.5px;line-height:1.65;color:var(--muted)}
+
+/* ═══ PROVIDERS ═══ */
+.providers{padding:100px 48px}
+.prov-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:44px}
+.prov-card{padding:14px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .2s;cursor:default}
+.prov-card:hover{border-color:var(--border2);background:var(--surface2);transform:translateY(-2px)}
+.prov-dot{width:9px;height:9px;border-radius:50%}
+.prov-name{font-size:11.5px;font-weight:500}
+.prov-desc{font-size:10px;color:var(--muted);text-align:center;line-height:1.4}
+
+/* ═══ HOW ═══ */
+.how{padding:100px 48px;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(99,102,241,.04) 0%,transparent 60%)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;position:relative}
+.steps::before{content:'';position:absolute;top:26px;left:calc(16.6% + 26px);right:calc(16.6% + 26px);height:1px;background:linear-gradient(to right,var(--accent),var(--accent2));opacity:.25}
+.step{padding:0 24px;text-align:center}
+.step-n{width:52px;height:52px;border-radius:50%;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);margin:0 auto 20px;position:relative;z-index:1}
+.step-t{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:9px}
+.step-d{font-size:13px;line-height:1.7;color:var(--muted)}
+
+/* ═══ CTA ═══ */
+.cta{padding:130px 48px;text-align:center;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(99,102,241,.08) 0%,transparent 70%)}
+.cta h2{font-size:clamp(30px,4.5vw,56px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:16px}
+.cta p{font-size:15px;color:var(--muted);margin-bottom:36px;line-height:1.75}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-p{padding:12px 26px;border-radius:10px;background:var(--accent);color:#fff;font-size:14px;font-weight:600;text-decoration:none;font-family:var(--font);transition:opacity .2s,transform .15s,box-shadow .2s;box-shadow:0 0 28px rgba(99,102,241,.28)}
+.btn-p:hover{opacity:.87;transform:translateY(-2px);box-shadow:0 0 44px rgba(99,102,241,.42);color:#fff}
+.btn-g{padding:12px 26px;border-radius:10px;border:1px solid var(--border2);color:var(--muted);font-size:14px;text-decoration:none;font-family:var(--font);transition:all .2s}
+.btn-g:hover{border-color:rgba(255,255,255,.25);color:var(--fg)}
+.cta-meta{margin-top:24px;font-size:12px;color:var(--dim)}
+
+/* Footer */
+footer{padding:32px 48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.foot-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:600}
+.foot-logo img{width:18px;height:18px;border-radius:5px;object-fit:contain;opacity:.55}
+.foot-links{display:flex;gap:20px}
+.foot-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s}
+.foot-links a:hover{color:var(--fg)}
+
+/* Fade in */
+.fi{opacity:0;transform:translateY(20px);transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1)}
+.fi.v{opacity:1;transform:translateY(0)}
+
+@media(max-width:1100px){.hero{grid-template-columns:1fr}.hero-right{display:none}.feat-grid{grid-template-columns:repeat(2,1fr)}.prov-grid{grid-template-columns:repeat(4,1fr)}.activity-inner{grid-template-columns:1fr}}
+@media(max-width:768px){nav{padding:12px 18px}.nav-r a:not(.nav-cta){display:none}.hero-left{padding:40px 18px 40px 20px}.features,.providers,.how,.activity,.cta{padding:70px 18px}.feat-grid{grid-template-columns:1fr}.prov-grid{grid-template-columns:repeat(3,1fr)}.steps{grid-template-columns:1fr;gap:36px}.steps::before{display:none}footer{padding:24px 18px;flex-direction:column;gap:16px;text-align:center}.foot-links{flex-wrap:wrap;justify-content:center}}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="#" class="logo">
+    <img src="/favicon.png" alt="Agentis"/>
+    Agentis<span class="logo-dot">.</span>
+  </a>
+  <div class="nav-r">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#providers">Providers</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">GitHub ↗</a>
+    <a href="/app.html" class="nav-cta">Open app →</a>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="top">
+  <div class="hero-bg"></div>
+
+  <div class="hero-left">
+    <div class="hero-badge"><span class="badge-pulse"></span>v0.3 · Open source · 12 providers</div>
+    <h1 class="hero-h1">Not one AI.<br/><span class="g">A whole team.</span></h1>
+    <p class="hero-sub">Type a task. Agentis spawns a coordinated team of specialized agents across multiple LLM providers — working in parallel, visible in real time.</p>
+
+    <div class="task-box">
+      <input id="task-input" type="text" placeholder="Describe a complex task…" maxlength="120"/>
+      <button class="launch-btn" id="launch-btn" onclick="launchDemo()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Launch
+      </button>
+    </div>
+
+    <div class="example-tasks">
+      <span class="ex-task" onclick="setTask(this)">Analyze AI market trends</span>
+      <span class="ex-task" onclick="setTask(this)">Build a REST API spec</span>
+      <span class="ex-task" onclick="setTask(this)">Write a competitor report</span>
+      <span class="ex-task" onclick="setTask(this)">Debug this React app</span>
+    </div>
+
+    <div class="hero-meta">
+      <div class="meta-item"><span class="meta-dot"></span>No backend required</div>
+      <div class="meta-item"><span class="meta-dot"></span>MIT licensed</div>
+      <div class="meta-item"><span class="meta-dot"></span>Runs in your browser</div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="demo-panel">
+      <div class="demo-topbar">
+        <div class="tb-dot" style="background:#ef4444"></div>
+        <div class="tb-dot" style="background:#f59e0b;margin-left:4px"></div>
+        <div class="tb-dot" style="background:#10b981;margin-left:4px"></div>
+        <span class="tb-title">Agentis Universe</span>
+        <div class="tb-status"><div class="tb-live"></div><span id="status-text">Idle</span></div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-canvas-wrap">
+          <canvas id="demo-canvas"></canvas>
+        </div>
+        <div class="demo-feed">
+          <div class="feed-header">Agent messages</div>
+          <div class="feed-msgs" id="feed-msgs"></div>
+        </div>
+      </div>
+    </div>
+    <div class="output-panel">
+      <div class="output-header">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Synthesis output
+      </div>
+      <div class="output-body" id="output-body"><span style="color:var(--dim)">Launch a task to see the synthesis…</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Ticker -->
+<div class="ticker"><div class="tick-inner" id="ticker"></div></div>
+
+<!-- ═══ LIVE ACTIVITY ═══ -->
+<section class="activity" id="activity">
+  <div class="activity-inner">
+    <div class="activity-left fi">
+      <div class="section-label">Live orchestration</div>
+      <h2>Watch every agent<br/>think out loud</h2>
+      <p>Agentis doesn't hide its work. Every agent streams its output token by token. Dependencies resolve automatically. Upstream context flows downstream. You see the full reasoning chain as it unfolds.</p>
+      <div class="agent-stats">
+        <div class="astat"><div class="astat-val" id="stat-agents">0</div><div class="astat-label">Agents spawned</div></div>
+        <div class="astat"><div class="astat-val" id="stat-tokens">0<span>k</span></div><div class="astat-label">Tokens processed</div></div>
+        <div class="astat"><div class="astat-val" id="stat-runs">0</div><div class="astat-label">Runs simulated</div></div>
+      </div>
+    </div>
+    <div class="agent-list fi" style="transition-delay:.12s">
+      <div class="agent-list-header">
+        <span>Active agents</span>
+        <span class="live"><div class="tb-live"></div>Live</span>
+      </div>
+      <div id="agent-rows"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="features" id="features">
+  <div class="section-label fi">Features</div>
+  <h2 class="section-title fi">Built for real work,<br/>not demos</h2>
+  <p class="section-sub fi">Every feature is designed around one principle: make the agents' work visible and trustworthy.</p>
+  <div class="feat-grid">
+    <div class="feat-card fi"><div class="feat-icon" style="background:rgba(99,102,241,.15)">⬡</div><div class="feat-title">Agent Universe Canvas</div><div class="feat-desc">Interactive hexagonal canvas showing each agent's role, provider, live output, token count, and dependencies in real time. Watch the orchestration graph build itself.</div></div>
+    <div class="feat-card fi" style="transition-delay:.05s"><div class="feat-icon" style="background:rgba(16,185,129,.15)">⚡</div><div class="feat-title">Smart Failover</div><div class="feat-desc">If a provider fails mid-stream, agents automatically switch to the next available one. Zero data loss — output accumulates seamlessly across provider switches.</div></div>
+    <div class="feat-card fi" style="transition-delay:.08s"><div class="feat-icon" style="background:rgba(234,179,8,.15)">🔍</div><div class="feat-title">Live Web Search</div><div class="feat-desc">Researcher and analyst agents auto-inject Tavily web search results into their context before generating output. Real-time knowledge, not just training data.</div></div>
+    <div class="feat-card fi" style="transition-delay:.11s"><div class="feat-icon" style="background:rgba(139,92,246,.15)">🧠</div><div class="feat-title">Persistent Universe</div><div class="feat-desc">Ask follow-ups and the relevant agents are recalled with their full context. New agents spawn for what's new. The knowledge graph compounds across every turn.</div></div>
+    <div class="feat-card fi" style="transition-delay:.14s"><div class="feat-icon" style="background:rgba(249,115,22,.15)">📦</div><div class="feat-title">skills.sh Integration</div><div class="feat-desc">Search 90,000+ skills from the skills.sh registry. Install and assign them to specific agent roles — specialized procedural knowledge injected at runtime.</div></div>
+    <div class="feat-card fi" style="transition-delay:.17s"><div class="feat-icon" style="background:rgba(34,211,238,.15)">🌐</div><div class="feat-title">Browser Agent</div><div class="feat-desc">A dedicated agent autonomously navigates live websites using PinchTab — navigates, reads, clicks, and fills forms to gather real-time data from the web.</div></div>
+  </div>
+</section>
+
+<!-- ═══ PROVIDERS ═══ -->
+<section class="providers" id="providers">
+  <div class="section-label fi">Providers</div>
+  <h2 class="section-title fi">12 LLM providers.<br/>One orchestration layer.</h2>
+  <p class="section-sub fi">Each agent is assigned the best provider and model tier for its role. Spread a single task across Anthropic, OpenAI, Google, and Groq simultaneously.</p>
+  <div class="prov-grid" id="prov-grid"></div>
+</section>
+
+<!-- ═══ HOW ═══ -->
+<section class="how" id="how">
+  <div class="section-label fi" style="text-align:center">How it works</div>
+  <h2 class="section-title fi" style="text-align:center;max-width:560px;margin:0 auto 12px">From one sentence<br/>to a full agent team</h2>
+  <p style="text-align:center;font-size:15px;color:var(--muted);margin-bottom:0" class="fi">Three phases. Fully automatic. Completely visible.</p>
+  <div class="steps">
+    <div class="step fi"><div class="step-n">01</div><div class="step-t">Plan</div><div class="step-d">The orchestrator analyzes your task, breaks it into 2–12 sub-tasks, assigns roles and providers, and maps out which agents can run in parallel vs. sequentially.</div></div>
+    <div class="step fi" style="transition-delay:.1s"><div class="step-n">02</div><div class="step-t">Execute</div><div class="step-d">Parallel agents fire simultaneously. Dependent agents receive upstream context and execute in order. Every output streams live. Failover triggers automatically.</div></div>
+    <div class="step fi" style="transition-delay:.2s"><div class="step-n">03</div><div class="step-t">Synthesize</div><div class="step-d">The orchestrator merges all outputs into one cohesive answer. Ask a follow-up and the universe extends — existing agents recalled, new ones spawned as needed.</div></div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta">
+  <div class="fi">
+    <h2>Your next build starts<br/>with one sentence.</h2>
+    <p>Free. Open source. No account needed.<br/>Bring your API key and run a full agent team in under 60 seconds.</p>
+    <div class="cta-btns">
+      <a href="/app.html" class="btn-p">Open Agentis free →</a>
+      <a href="https://github.com/Dhwanil25/Agentis" target="_blank" class="btn-g">Star on GitHub ↗</a>
+    </div>
+    <p class="cta-meta">MIT licensed · Browser-native · Zero backend · 12 LLM providers</p>
+  </div>
+</section>
+
+<footer>
+  <a href="#" class="foot-logo"><img src="/favicon.png" alt="Agentis"/>Agentis</a>
+  <div class="foot-links">
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">GitHub</a>
+    <a href="/app.html">App</a>
+  </div>
+</footer>
+
+<script>
+// ── Providers data ──────────────────────────────────────────────────────────
+const PROVIDERS = [
+  {name:'Anthropic',  color:'#f97316', desc:'Claude family'},
+  {name:'OpenAI',     color:'#10b981', desc:'GPT-4.1'},
+  {name:'Google',     color:'#4285f4', desc:'Gemini 2.5'},
+  {name:'Groq',       color:'#f43f5e', desc:'Ultra-fast'},
+  {name:'Mistral',    color:'#a855f7', desc:'Multilingual'},
+  {name:'DeepSeek',   color:'#06b6d4', desc:'Math & STEM'},
+  {name:'OpenRouter', color:'#8b5cf6', desc:'200+ models'},
+  {name:'Cohere',     color:'#eab308', desc:'RAG/Search'},
+  {name:'xAI',        color:'#e2e8f0', desc:'Real-time web'},
+  {name:'Together',   color:'#fb923c', desc:'Open source'},
+  {name:'Ollama',     color:'#64748b', desc:'Local models'},
+  {name:'LM Studio',  color:'#6366f1', desc:'Local GGUF'},
+]
+const ROLE_COLORS = {orchestrator:'#f97316',researcher:'#3b82f6',analyst:'#06b6d4',writer:'#10b981',coder:'#eab308',reviewer:'#ec4899',planner:'#8b5cf6',summarizer:'#64748b',browser:'#22d3ee'}
+
+// Providers grid
+const pg = document.getElementById('prov-grid')
+PROVIDERS.forEach(p => {
+  pg.innerHTML += `<div class="prov-card"><div class="prov-dot" style="background:${p.color}"></div><div class="prov-name">${p.name}</div><div class="prov-desc">${p.desc}</div></div>`
+})
+
+// Ticker
+const ti = document.getElementById('ticker')
+const tItems = PROVIDERS.map(p => `<span class="tick-item"><span class="tick-dot" style="background:${p.color}"></span>${p.name}</span>`).join('')
+ti.innerHTML = tItems + tItems
+
+// Nav scroll
+const navEl = document.getElementById('nav')
+window.addEventListener('scroll', () => navEl.classList.toggle('s', window.scrollY > 20), {passive:true})
+
+// Fade-in observer
+const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)} }), {threshold:.08})
+document.querySelectorAll('.fi').forEach(el => io.observe(el))
+
+// ── Demo Canvas ─────────────────────────────────────────────────────────────
+const dpr = window.devicePixelRatio || 1
+const cv = document.getElementById('demo-canvas')
+const ctx = cv.getContext('2d')
+
+function resizeCanvas(){
+  const wrap = cv.parentElement
+  cv.width = wrap.offsetWidth * dpr
+  cv.height = wrap.offsetHeight * dpr
+}
+resizeCanvas()
+window.addEventListener('resize', () => { resizeCanvas(); buildAgents() }, {passive:true})
+
+const ROLES_DEF = [
+  {role:'orchestrator', color:'#f97316', model:'claude-sonnet-4-6',  provider:'Anthropic'},
+  {role:'researcher',   color:'#3b82f6', model:'llama-3.3-70b',       provider:'Groq'},
+  {role:'analyst',      color:'#06b6d4', model:'gemini-2.5-pro',      provider:'Google'},
+  {role:'coder',        color:'#eab308', model:'gpt-4.1',             provider:'OpenAI'},
+  {role:'writer',       color:'#10b981', model:'claude-haiku-4-5',    provider:'Anthropic'},
+  {role:'reviewer',     color:'#ec4899', model:'mistral-large',       provider:'Mistral'},
+  {role:'planner',      color:'#8b5cf6', model:'deepseek-chat',       provider:'DeepSeek'},
+]
+const EDGES_DEF = [[0,6],[0,1],[0,2],[1,3],[2,4],[3,5],[4,5]]
+
+let agents = [], running = false, globalT = 0
+
+function buildAgents(){
+  const W = cv.width/dpr, H = cv.height/dpr
+  const cx = W/2, cy = H/2
+  agents = ROLES_DEF.map((r, i) => {
+    const isCenter = i === 0
+    const angle = (2*Math.PI*(i-1))/(ROLES_DEF.length-1) - Math.PI/2
+    const radius = isCenter ? 0 : Math.min(W,H)*0.3
+    const bx = isCenter ? cx : cx + radius*Math.cos(angle)
+    const by = isCenter ? cy : cy + radius*Math.sin(angle)
+    return {
+      ...r, bx, by, x:bx, y:by,
+      phase: Math.random()*Math.PI*2, speed: 0.4+Math.random()*0.4,
+      status: 'idle', progress: Math.random(), tokensOut: 0,
+      outputText: '', size: isCenter ? 32 : 24, pulse: 0,
+    }
+  })
+}
+buildAgents()
+
+// Particles
+const particles = EDGES_DEF.flatMap((e,_) =>
+  Array.from({length:3}, () => ({edge:e, t:Math.random(), speed:0.003+Math.random()*0.005}))
+)
+
+function hexPath(x,y,r){
+  ctx.beginPath()
+  for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6; i?ctx.lineTo(x+r*Math.cos(a),y+r*Math.sin(a)):ctx.moveTo(x+r*Math.cos(a),y+r*Math.sin(a))}
+  ctx.closePath()
+}
+
+function drawFrame(){
+  const W=cv.width/dpr, H=cv.height/dpr
+  ctx.clearRect(0,0,cv.width,cv.height)
+  ctx.save(); ctx.scale(dpr,dpr)
+
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=0.5
+  for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  // update positions
+  agents.forEach(a => {
+    a.x = a.bx + Math.sin(globalT*a.speed+a.phase)*5
+    a.y = a.by + Math.cos(globalT*a.speed*.7+a.phase)*4
+    a.pulse = (Math.sin(globalT*1.5+a.phase)+1)/2
+    if(running && a.status==='working') { a.tokensOut = Math.min(a.tokensOut+0.4,100); a.progress=(a.progress+.005)%1 }
+  })
+
+  // edges
+  EDGES_DEF.forEach(([f,t]) => {
+    const fa=agents[f], ta=agents[t]
+    const g=ctx.createLinearGradient(fa.x,fa.y,ta.x,ta.y)
+    g.addColorStop(0,fa.color+'35'); g.addColorStop(1,ta.color+'35')
+    ctx.beginPath();ctx.moveTo(fa.x,fa.y);ctx.lineTo(ta.x,ta.y)
+    ctx.strokeStyle=g;ctx.lineWidth=1;ctx.stroke()
+  })
+
+  // particles (only when running)
+  if(running) particles.forEach(p => {
+    const [f,t]=p.edge, fa=agents[f], ta=agents[t]
+    p.t=(p.t+p.speed)%1
+    const px=fa.x+(ta.x-fa.x)*p.t, py=fa.y+(ta.y-fa.y)*p.t
+    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2)
+    ctx.fillStyle=agents[p.edge[0]].color+'cc';ctx.fill()
+  })
+
+  // agents
+  agents.forEach(a => {
+    const sz = a.size
+    const glow = ctx.createRadialGradient(a.x,a.y,sz*.5,a.x,a.y,sz+16)
+    const alpha = a.status==='working'?'30':'14'
+    glow.addColorStop(0,a.color+alpha);glow.addColorStop(1,'transparent')
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(a.x,a.y,sz+16,0,Math.PI*2);ctx.fill()
+
+    hexPath(a.x,a.y,sz)
+    ctx.fillStyle='#0a0a1a';ctx.fill()
+    const strokeAlpha = a.status==='done'?'55':a.status==='working'?'ee':'44'
+    ctx.strokeStyle=a.color+strokeAlpha;ctx.lineWidth=a.role==='orchestrator'?2:1.5;ctx.stroke()
+
+    if(a.status==='working'){
+      ctx.beginPath();ctx.arc(a.x,a.y,sz+4,-Math.PI/2,-Math.PI/2+a.progress*Math.PI*2)
+      ctx.strokeStyle=a.color+'55';ctx.lineWidth=2;ctx.stroke()
+    }
+    if(a.status==='done'){
+      ctx.fillStyle=a.color+'cc';ctx.font='bold 11px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✓',a.x,a.y+1)
+    } else {
+      ctx.fillStyle=a.status==='working'?a.color:'rgba(255,255,255,.65)'
+      ctx.font=`${a.role==='orchestrator'?600:500} ${a.role==='orchestrator'?10:9}px Inter`
+      ctx.textAlign='center';ctx.textBaseline='middle'
+      ctx.fillText(a.role.slice(0,5),a.x,a.y)
+    }
+
+    // token bar
+    if(a.status==='working'||a.status==='done'){
+      const bw=sz*2.2,bh=3,bx2=a.x-bw/2,by2=a.y+sz+5
+      ctx.fillStyle='rgba(255,255,255,.06)';ctx.beginPath();ctx.roundRect(bx2,by2,bw,bh,2);ctx.fill()
+      const pct=a.status==='done'?1:a.tokensOut/100
+      ctx.fillStyle=a.color+(a.status==='done'?'88':'bb');ctx.beginPath();ctx.roundRect(bx2,by2,bw*pct,bh,2);ctx.fill()
+    }
+
+    // thinking dots for working agents
+    if(a.status==='working'){
+      for(let d=0;d<3;d++){
+        const da=Math.max(0,Math.sin(globalT*3+a.phase-d*.8))
+        ctx.beginPath();ctx.arc(a.x-6+d*6,a.y+sz+10,1.5,0,Math.PI*2)
+        ctx.fillStyle=a.color+Math.round(da*180).toString(16).padStart(2,'0');ctx.fill()
+      }
+    }
+  })
+
+  ctx.restore()
+  globalT+=0.016
+  requestAnimationFrame(drawFrame)
+}
+drawFrame()
+
+// ── Demo scenarios ──────────────────────────────────────────────────────────
+const SCENARIOS = {
+  'Analyze AI market trends': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Planning task: 4 agents → researcher, analyst, writer, reviewer'},
+      {from:'researcher',  color:'#3b82f6',text:'Searching: "AI market trends 2025 competitive landscape"'},
+      {from:'researcher',  color:'#3b82f6',text:'Found 8 sources. Key players: Anthropic, OpenAI, Google, Meta'},
+      {from:'analyst',     color:'#06b6d4',text:'Analyzing: market growing ~40% YoY. Claude leading in enterprise'},
+      {from:'writer',      color:'#10b981',text:'Drafting report: 5 sections, ~1200 words, executive summary first'},
+      {from:'reviewer',    color:'#ec4899',text:'Review pass: citations verified, 2 claims need strengthening'},
+      {from:'orchestrator',color:'#f97316',text:'Synthesis complete. Final report ready.'},
+    ],
+    output: 'AI Market Analysis 2025\n\nKey Finding: The AI tooling market is growing at ~40% YoY with $12B in new investment in Q1 alone. Anthropic\'s Claude models lead enterprise adoption (+68% YoY), followed by GPT-4.1 in developer tooling.\n\nTop 3 trends:\n1. Multi-agent orchestration replacing single-prompt workflows\n2. Local model adoption (Ollama +210% installs) driven by privacy needs\n3. Vertical AI tools outperforming horizontal platforms 3:1 in retention…'
+  },
+  'Build a REST API spec': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Planning: planner → coder → reviewer pipeline'},
+      {from:'planner',     color:'#8b5cf6',text:'Scoping: 6 endpoints, JWT auth, rate limiting, OpenAPI 3.0'},
+      {from:'planner',     color:'#8b5cf6',text:'Dependency graph: auth → CRUD → webhooks → docs'},
+      {from:'coder',       color:'#eab308',text:'Writing OpenAPI spec: POST /api/v1/auth/token...'},
+      {from:'coder',       color:'#eab308',text:'Endpoints: 6 routes, 14 schemas, 8 error types defined'},
+      {from:'reviewer',    color:'#ec4899',text:'Security check: missing rate-limit headers on 2 endpoints'},
+      {from:'orchestrator',color:'#f97316',text:'Spec finalized. All security issues resolved.'},
+    ],
+    output: 'REST API Specification v1.0\n\nBase URL: /api/v1\nAuth: Bearer JWT (RS256)\n\nEndpoints:\n  POST   /auth/token      — Issue access token\n  POST   /auth/refresh     — Refresh token\n  GET    /users/:id        — Get user profile\n  PATCH  /users/:id        — Update user\n  GET    /resources        — List with cursor pagination\n  POST   /resources        — Create resource\n\nRate limits: 1000 req/min authenticated, 60 req/min unauthenticated…'
+  },
+  'Write a competitor report': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Spawning: researcher + analyst + writer chain'},
+      {from:'researcher',  color:'#3b82f6',text:'Searching: "AI agent platforms comparison 2025"'},
+      {from:'researcher',  color:'#3b82f6',text:'Found: Devin, AutoGPT, CrewAI, LangGraph, Agentis profiles'},
+      {from:'analyst',     color:'#06b6d4',text:'Comparing: UX, provider support, orchestration model, pricing'},
+      {from:'analyst',     color:'#06b6d4',text:'Agentis unique: browser-native, live canvas, 12 providers, zero backend'},
+      {from:'writer',      color:'#10b981',text:'Writing 8-section competitive analysis with SWOT matrix…'},
+      {from:'orchestrator',color:'#f97316',text:'Report complete. 2,400 words, 3 charts described.'},
+    ],
+    output: 'Competitive Landscape: AI Agent Platforms\n\nExecutive Summary: Agentis differentiates through its browser-native architecture, live visualization canvas, and 12-provider support — a combination no competitor currently offers.\n\nKey differentiator table:\n• AutoGPT:  Terminal UI, single provider, no live viz\n• CrewAI:   Python library, no UI, requires backend\n• LangGraph: Framework only, no end-user interface\n• Agentis:  Browser-native, live canvas, 12 providers, zero setup…'
+  },
+  'Debug this React app': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Assigning: analyst → coder → reviewer for debug pipeline'},
+      {from:'analyst',     color:'#06b6d4',text:'Scanning for common React issues: stale closures, missing deps...'},
+      {from:'analyst',     color:'#06b6d4',text:'Found: useEffect missing dependency array, causing infinite loop'},
+      {from:'coder',       color:'#eab308',text:'Generating fix: adding [userId] to dependency array at line 47'},
+      {from:'coder',       color:'#eab308',text:'Also found: key prop missing in list render at line 83'},
+      {from:'reviewer',    color:'#ec4899',text:'Fix verified. No new issues introduced. Performance neutral.'},
+      {from:'orchestrator',color:'#f97316',text:'Debug complete. 2 issues found, 2 fixes provided.'},
+    ],
+    output: 'Debug Report\n\nIssue 1 (Critical): Infinite render loop\n  File: UserDashboard.tsx, line 47\n  Cause: useEffect with no dependency array calls setUser on every render\n  Fix: useEffect(() => { fetchUser(userId) }, [userId])\n\nIssue 2 (Warning): Missing key props\n  File: ItemList.tsx, line 83\n  Cause: .map() renders without unique key\n  Fix: Add key={item.id} to each <ListItem/>\n\nAll other patterns OK. No memory leaks detected.'
+  }
+}
+
+let demoInterval = null, demoTimeout = null, currentScenario = null
+
+function clearDemo(){
+  if(demoInterval) clearInterval(demoInterval)
+  if(demoTimeout) clearTimeout(demoTimeout)
+  agents.forEach(a => { a.status='idle'; a.tokensOut=0; a.progress=0 })
+  running = false
+  document.getElementById('status-text').textContent = 'Idle'
+  document.getElementById('launch-btn').classList.remove('running')
+  document.getElementById('launch-btn').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launch'
+}
+
+function launchDemo(){
+  const task = document.getElementById('task-input').value.trim() || 'Analyze AI market trends'
+  const scenario = SCENARIOS[task] || SCENARIOS['Analyze AI market trends']
+  clearDemo()
+  currentScenario = scenario
+
+  running = true
+  document.getElementById('status-text').textContent = 'Planning…'
+  document.getElementById('launch-btn').classList.add('running')
+  document.getElementById('launch-btn').textContent = '● Running'
+  document.getElementById('output-body').innerHTML = '<span style="color:var(--dim)">Agents working…</span>'
+
+  const feed = document.getElementById('feed-msgs')
+  feed.innerHTML = ''
+
+  // Set agent statuses over time
+  const workingAgents = [agents[6], agents[1], agents[2], agents[3], agents[4], agents[5]]
+  agents[0].status = 'working'
+
+  const phases = [
+    () => { agents[0].status='working'; document.getElementById('status-text').textContent='Planning…' },
+    () => { agents[6].status='working'; agents[1].status='working'; document.getElementById('status-text').textContent='Executing (2 parallel)' },
+    () => { agents[2].status='working' },
+    () => { agents[6].status='done'; agents[1].status='done' },
+    () => { agents[3].status='working'; agents[2].status='done' },
+    () => { agents[4].status='working' },
+    () => { agents[3].status='done'; agents[4].status='done' },
+    () => { agents[5].status='working' },
+    () => { agents[5].status='done'; agents[0].status='done'; document.getElementById('status-text').textContent='Synthesizing…' },
+    () => {
+      document.getElementById('status-text').textContent='Done ✓'
+      streamOutput(scenario.output)
+      document.getElementById('launch-btn').classList.remove('running')
+      document.getElementById('launch-btn').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launch'
+      running = false
+      // restart after 6s
+      demoTimeout = setTimeout(() => {
+        const tasks = Object.keys(SCENARIOS)
+        const next = tasks[(tasks.indexOf(document.getElementById('task-input').value)||0+1)%tasks.length]
+        document.getElementById('task-input').value = next
+        launchDemo()
+      }, 8000)
+    }
+  ]
+
+  let pi = 0
+  phases[pi++]()
+  let mi = 0
+  demoInterval = setInterval(() => {
+    if(pi < phases.length) phases[pi++]()
+    if(mi < scenario.msgs.length){
+      const msg = scenario.msgs[mi++]
+      const el = document.createElement('div')
+      el.className = 'feed-msg'
+      el.innerHTML = `<div class="feed-from" style="color:${msg.color}">${msg.from}</div><div class="feed-text">${msg.text}</div>`
+      feed.appendChild(el)
+      feed.scrollTop = feed.scrollHeight
+    }
+  }, 900)
+}
+
+function streamOutput(text){
+  const el = document.getElementById('output-body')
+  el.innerHTML = ''
+  let i = 0
+  const words = text.split(' ')
+  const interval = setInterval(() => {
+    if(i >= words.length){ clearInterval(interval); return }
+    el.textContent = words.slice(0,++i).join(' ')
+    el.scrollTop = el.scrollHeight
+  }, 40)
+}
+
+function setTask(el){
+  document.getElementById('task-input').value = el.textContent
+  document.getElementById('task-input').focus()
+}
+
+// Auto-launch on load after a short delay
+setTimeout(launchDemo, 1200)
+
+// ── Live activity stats counter ─────────────────────────────────────────────
+let totalAgents=0, totalTokens=0, totalRuns=0
+function tickStats(){
+  if(running){ totalTokens+=Math.floor(Math.random()*8+4); document.getElementById('stat-tokens').innerHTML=Math.floor(totalTokens/10)+'<span>k</span>' }
+}
+setInterval(tickStats, 400)
+
+// ── Animate agent rows ───────────────────────────────────────────────────────
+const AGENT_ROWS_DATA = [
+  {role:'researcher', color:'#3b82f6', model:'llama-3.3-70b · Groq',   status:'working', preview:'Found 8 sources on AI market trends…'},
+  {role:'analyst',    color:'#06b6d4', model:'gemini-2.5-pro · Google', status:'working', preview:'Market growing 40% YoY, Claude leads…'},
+  {role:'coder',      color:'#eab308', model:'gpt-4.1 · OpenAI',        status:'waiting', preview:'Waiting for analyst output…'},
+  {role:'writer',     color:'#10b981', model:'claude-haiku-4-5 · Ant',  status:'done',    preview:'Report drafted: 1,200 words'},
+  {role:'reviewer',   color:'#ec4899', model:'mistral-large · Mistral', status:'waiting', preview:'Queued for writer output'},
+]
+const rowContainer = document.getElementById('agent-rows')
+AGENT_ROWS_DATA.forEach(a => {
+  const badge = a.status==='working'?'status-working':a.status==='done'?'status-done':'status-waiting'
+  const label = a.status==='working'?'Working':a.status==='done'?'Done':'Waiting'
+  rowContainer.innerHTML += `
+    <div class="agent-row">
+      <div class="agent-hex">
+        <svg width="32" height="32" viewBox="0 0 32 32">
+          <path d="M16 2 L28 9 L28 23 L16 30 L4 23 L4 9 Z" fill="${a.color}15" stroke="${a.color}88" stroke-width="1.5"/>
+          <text x="16" y="17" text-anchor="middle" dominant-baseline="middle" fill="${a.color}" font-size="7" font-family="Inter" font-weight="600">${a.role.slice(0,4)}</text>
+        </svg>
+      </div>
+      <div class="agent-info">
+        <div class="agent-name" style="text-transform:capitalize">${a.role}</div>
+        <div class="agent-model">${a.model}</div>
+        <div class="agent-output-preview">${a.preview}</div>
+      </div>
+      <div class="agent-status">
+        <span class="status-badge ${badge}">${label}</span>
+        <span class="agent-tokens">${Math.floor(Math.random()*800+200)} tok</span>
+      </div>
+    </div>`
+})
+
+// Update live stats
+setInterval(() => {
+  totalAgents = Math.min(totalAgents+1, 847)
+  totalRuns = Math.min(totalRuns+1, 312)
+  document.getElementById('stat-agents').textContent = totalAgents
+  document.getElementById('stat-runs').textContent = totalRuns
+}, 50)
+
+// Enter key on task input
+document.getElementById('task-input').addEventListener('keydown', e => { if(e.key==='Enter') launchDemo() })
+</script>
+</body>
 </html>

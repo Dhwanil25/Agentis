@@ -39,7 +39,7 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
     void engineRunning
   }, [engineRunning])
 
-  const refreshMemories = () => setMemories(loadMemories())
+  const refreshMemories = () => { loadMemories().then(setMemories).catch(() => {}) }
 
   useEffect(() => {
     refreshMemories()
@@ -52,7 +52,7 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
 
   const handleAddMemory = () => {
     if (!newKey.trim() || !newValue.trim()) return
-    addMemory({ agentId: selectedAgent, key: newKey.trim(), value: newValue.trim(), ts: Date.now(), source: 'manual' })
+    addMemory({ agentId: selectedAgent, key: newKey.trim(), value: newValue.trim(), ts: Date.now(), source: 'manual' }).catch(() => {})
     setNewKey('')
     setNewValue('')
     setAddingNew(false)
@@ -154,7 +154,7 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
                   <button
                     className="btn-ghost"
                     style={{ fontSize: 11, color: '#ef4444' }}
-                    onClick={() => { if (confirm(`Clear all memory for "${selectedAgent}"?`)) clearAgentMemories(selectedAgent) }}
+                    onClick={() => { if (confirm(`Clear all memory for "${selectedAgent}"?`)) clearAgentMemories(selectedAgent).catch(() => {}) }}
                   >
                     Clear all
                   </button>
@@ -250,7 +250,7 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
                     <button
                       className="btn-ghost"
                       style={{ fontSize: 11, color: '#ef4444', flexShrink: 0, padding: '2px 8px' }}
-                      onClick={() => deleteMemory(m.id)}
+                      onClick={() => deleteMemory(m.id).catch(() => {})}
                     >
                       ×
                     </button>

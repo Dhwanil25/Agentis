@@ -25,9 +25,10 @@ export function AnalyticsPage() {
   const [summary, setSummary]   = useState<AnalyticsSummary | null>(null)
 
   const refresh = () => {
-    const r = loadUsageRecords()
-    setRecords(r)
-    setSummary(getAnalyticsSummary(r))
+    loadUsageRecords().then(r => {
+      setRecords(r)
+      setSummary(getAnalyticsSummary(r))
+    }).catch(() => {})
   }
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function AnalyticsPage() {
           <button
             className="btn-ghost"
             style={{ fontSize: 11 }}
-            onClick={() => { if (confirm('Clear all analytics data?')) { clearUsageRecords(); refresh() } }}
+            onClick={() => { if (confirm('Clear all analytics data?')) { clearUsageRecords().then(() => refresh()).catch(() => {}) } }}
           >
             Clear Data
           </button>

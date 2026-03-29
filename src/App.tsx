@@ -15,12 +15,13 @@ import { SkillsPage } from '@/components/pages/SkillsPage'
 import { HandsPage } from '@/components/pages/HandsPage'
 import { UniversePage } from '@/components/pages/UniversePage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
+import { DocsPage } from '@/components/pages/DocsPage'
 import { addHistoryEntry } from '@/components/DashboardScreen'
 
 type Page =
   | 'chat' | 'overview' | 'analytics' | 'logs' | 'sessions'
   | 'approvals' | 'comms' | 'workflows' | 'scheduler'
-  | 'channels' | 'skills' | 'hands' | 'universe' | 'settings'
+  | 'channels' | 'skills' | 'hands' | 'universe' | 'settings' | 'docs'
 
 export default function App() {
   const [apiKey, setApiKey] = useState(() => {
@@ -246,6 +247,8 @@ export default function App() {
             }}
           />
         )}
+
+        {page === 'docs' && <DocsPage />}
       </div>
     </div>
   )

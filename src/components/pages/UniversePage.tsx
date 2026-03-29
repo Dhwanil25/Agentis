@@ -1133,7 +1133,7 @@ export function UniversePage({ apiKey }: Props) {
           onLaunch={handleLaunch}
           onFollowUp={handleFollowUp}
           onSaveMemory={() => {
-            addMemory({ agentId: 'universe', key: `task-${Date.now()}`, value: `Task: ${task}\n\nOutput:\n${finalOutput}`, ts: Date.now(), source: 'manual' })
+            addMemory({ agentId: 'universe', key: `task-${Date.now()}`, value: `Task: ${task}\n\nOutput:\n${finalOutput}`, ts: Date.now(), source: 'manual' }).catch(() => {})
             setSavedToMemory(true)
             setTimeout(() => setSavedToMemory(false), 3000)
           }}

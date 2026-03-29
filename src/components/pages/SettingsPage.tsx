@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
-import { getPbUrl, setPbUrl, checkPbHealth, syncLocalStorageToPb } from '@/lib/pb'
-import { loadMemories, type MemoryEntry } from '@/lib/memory'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import {
+  loadMemories, getMemoryStats, exportMemories, importMemories,
+  pruneDecayedMemories, getDecayRate, setDecayRate,
+  type MemoryEntry, type MemoryStats,
+} from '@/lib/memory'
 import { PROVIDER_MODELS, type LLMProvider } from '@/lib/multiAgentEngine'
 
-type SettingsTab = 'providers' | 'models' | 'config' | 'security' | 'network' | 'budget' | 'system' | 'migration' | 'database' | 'memory'
+type SettingsTab = 'providers' | 'models' | 'config' | 'security' | 'network' | 'budget' | 'system' | 'migration' | 'memory'
 
 interface Props {
   apiKey: string
@@ -215,19 +218,25 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; msg: string }>>({})
   const [modelSearch, setModelSearch] = useState('')
   const [modelProvider, setModelProvider] = useState('all')
-  const [pbUrl, setPbUrlState] = useState(getPbUrl)
-  const [pbStatus, setPbStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle')
-  const [pbMsg, setPbMsg] = useState('')
-  const [syncStatus, setSyncStatus] = useState<string | null>(null)
   const [memories, setMemories] = useState<MemoryEntry[]>([])
   const [memorySearch, setMemorySearch] = useState('')
+  const [memStats, setMemStats] = useState<MemoryStats | null>(null)
+  const [decayRate, setDecayRateState] = useState<number>(getDecayRate)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [pruneStatus, setPruneStatus] = useState<string | null>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
+
+  const refreshMemory = () => {
+    loadMemories().then(m => setMemories([...m].reverse())).catch(() => {})
+    getMemoryStats().then(setMemStats).catch(() => {})
+  }
 
   useEffect(() => {
-    if (tab === 'memory') setMemories(loadMemories().reverse())
+    if (tab === 'memory') refreshMemory()
   }, [tab])
 
   useEffect(() => {
-    const handler = () => { if (tab === 'memory') setMemories(loadMemories().reverse()) }
+    const handler = () => { if (tab === 'memory') refreshMemory() }
     window.addEventListener('agentis_memory_update', handler)
     return () => window.removeEventListener('agentis_memory_update', handler)
   }, [tab])
@@ -316,26 +325,41 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
 
   const maskedKey = (key: string) => key ? key.slice(0, 8) + '...' + key.slice(-4) : ''
 
-  const handlePbSave = async () => {
-    const url = pbUrl.trim().replace(/\/$/, '')
-    setPbUrl(url)
-    setPbStatus('checking')
-    setPbMsg('')
-    const { ok, version } = await checkPbHealth()
-    if (ok) {
-      setPbStatus('ok')
-      setPbMsg(`Connected — PocketBase ${version}`)
-    } else {
-      setPbStatus('error')
-      setPbMsg('Could not reach PocketBase. Check the URL and that the server is running.')
-    }
+  const handleExport = async () => {
+    const json = await exportMemories()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `agentis-memory-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  const handlePbSync = async () => {
-    setSyncStatus('Syncing...')
-    const result = await syncLocalStorageToPb()
-    setSyncStatus(`Synced: ${result.memories} memories, ${result.analytics} analytics records, ${result.sessions} sessions`)
-    setTimeout(() => setSyncStatus(null), 6000)
+  const handleImport = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const { imported, skipped } = await importMemories(text)
+      setImportStatus(`Imported ${imported} new memories (${skipped} already existed)`)
+      setTimeout(() => setImportStatus(null), 5000)
+    } catch {
+      setImportStatus('Import failed — invalid file format')
+      setTimeout(() => setImportStatus(null), 4000)
+    }
+    if (importFileRef.current) importFileRef.current.value = ''
+  }
+
+  const handlePrune = async () => {
+    const pruned = await pruneDecayedMemories(0.05)
+    setPruneStatus(pruned > 0 ? `Pruned ${pruned} low-importance memories` : 'No memories below threshold')
+    setTimeout(() => setPruneStatus(null), 4000)
+  }
+
+  const handleDecayChange = (rate: number) => {
+    setDecayRate(rate)
+    setDecayRateState(rate)
   }
 
   // ── Migration helpers ──────────────────────────────────────────────────────
@@ -461,7 +485,6 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
     { id: 'providers', label: 'Providers' },
     { id: 'models', label: 'Models' },
     { id: 'memory', label: 'Memory' },
-    { id: 'database', label: 'Database' },
     { id: 'config', label: 'Config' },
     { id: 'security', label: 'Security' },
     { id: 'network', label: 'Network' },
@@ -922,227 +945,133 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
           </div>
         )}
 
-        {/* Database */}
-        {tab === 'database' && (
-          <div>
-            <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
-              PocketBase replaces localStorage for memory, analytics, and sessions — giving you persistent storage that survives browser clears and works across devices and deployments.
-            </div>
-
-            {/* Connection */}
-            <div style={{ marginBottom: 20 }}>
-              <div className="of-section-label" style={{ marginBottom: 12 }}>PocketBase Connection</div>
-              <div className="card" style={{ padding: '16px' }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <input
-                    value={pbUrl}
-                    onChange={e => setPbUrlState(e.target.value)}
-                    placeholder="https://your-pb.fly.dev  or  http://localhost:8090"
-                    onKeyDown={e => e.key === 'Enter' && void handlePbSave()}
-                    style={{ flex: 1, fontSize: 12, fontFamily: 'var(--font-mono)' }}
-                  />
-                  <button
-                    className="btn-primary"
-                    onClick={() => void handlePbSave()}
-                    disabled={!pbUrl.trim()}
-                    style={{ fontSize: 12, padding: '6px 16px', whiteSpace: 'nowrap' }}
-                  >
-                    {pbStatus === 'checking' ? 'Checking...' : 'Save & Test'}
-                  </button>
-                  {getPbUrl() && (
-                    <button
-                      className="btn-ghost"
-                      onClick={() => { setPbUrl(''); setPbUrlState(''); setPbStatus('idle'); setPbMsg('') }}
-                      style={{ fontSize: 12, color: '#ef4444' }}
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </div>
-
-                {pbMsg && (
-                  <div style={{
-                    fontSize: 12, padding: '6px 10px', borderRadius: 6,
-                    background: pbStatus === 'ok' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                    border: `1px solid ${pbStatus === 'ok' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                    color: pbStatus === 'ok' ? '#10b981' : '#ef4444',
-                  }}>
-                    {pbMsg}
-                  </div>
-                )}
-
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    width: 7, height: 7, borderRadius: '50%', display: 'inline-block',
-                    background: pbStatus === 'ok' ? '#10b981' : pbStatus === 'checking' ? '#f59e0b' : 'var(--border)',
-                  }} />
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {pbStatus === 'ok' ? 'PocketBase connected — data is being synced' :
-                     pbStatus === 'checking' ? 'Checking connection...' :
-                     getPbUrl() ? 'URL saved (not yet tested)' : 'Not configured — using localStorage only'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Collections schema */}
-            <div style={{ marginBottom: 20 }}>
-              <div className="of-section-label" style={{ marginBottom: 12 }}>Required Collections</div>
-              <div className="card" style={{ overflow: 'hidden' }}>
-                {[
-                  { name: 'memories', fields: 'agent_id (text), key (text), value (text), source (text), ts (number)' },
-                  { name: 'analytics', fields: 'model, persona, task (text), input_tokens, output_tokens, step_count (number), cost (number), ts (number)' },
-                  { name: 'sessions', fields: 'persona, task, mode, status (text), ts (number)' },
-                ].map((col, i, arr) => (
-                  <div key={col.name} style={{
-                    padding: '11px 14px',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent)', fontWeight: 600, marginBottom: 3 }}>
-                      {col.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>{col.fields}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>
-                Create these in your PocketBase admin at <span style={{ fontFamily: 'var(--font-mono)' }}>your-url/_/</span> — all collections should be set to <strong>public API rules</strong> (no auth required) for now.
-              </div>
-            </div>
-
-            {/* Sync existing data */}
-            {getPbUrl() && (
-              <div style={{ marginBottom: 20 }}>
-                <div className="of-section-label" style={{ marginBottom: 12 }}>One-Time Data Migration</div>
-                <div className="card" style={{ padding: '16px' }}>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
-                    Upload your existing localStorage data (memories, analytics, sessions) to PocketBase. Run this once after connecting.
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <button
-                      className="btn-primary"
-                      onClick={() => void handlePbSync()}
-                      style={{ fontSize: 12 }}
-                    >
-                      Migrate localStorage → PocketBase
-                    </button>
-                    {syncStatus && (
-                      <span style={{ fontSize: 12, color: syncStatus.startsWith('Synced') ? '#10b981' : 'var(--muted)' }}>
-                        {syncStatus}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Deployment guide */}
-            <div>
-              <div className="of-section-label" style={{ marginBottom: 12 }}>Deployment Guide</div>
-              <div className="card" style={{ padding: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {[
-                    {
-                      step: '1',
-                      title: 'Deploy PocketBase to Fly.io (free)',
-                      code: 'fly launch --name agentis-db --image ghcr.io/pocketbase/pocketbase\nfly volumes create pb_data --size 1\nfly deploy',
-                    },
-                    {
-                      step: '2',
-                      title: 'Create collections in admin UI',
-                      code: 'https://agentis-db.fly.dev/_/\n# Create: memories, analytics, sessions\n# Set API rules to public (no auth)',
-                    },
-                    {
-                      step: '3',
-                      title: 'Deploy Agentis frontend to Vercel',
-                      code: 'npm run build\nnpx vercel --prod\n# Or connect your GitHub repo in vercel.com',
-                    },
-                    {
-                      step: '4',
-                      title: 'Connect Agentis to PocketBase',
-                      code: '# Paste your Fly.io URL above:\nhttps://agentis-db.fly.dev',
-                    },
-                  ].map(item => (
-                    <div key={item.step}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <span style={{
-                          width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)',
-                          color: '#fff', fontSize: 10, fontWeight: 700,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                        }}>{item.step}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)' }}>{item.title}</span>
-                      </div>
-                      <div style={{
-                        background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-                        padding: '8px 12px', fontFamily: 'var(--font-mono)', fontSize: 11,
-                        color: 'var(--muted)', whiteSpace: 'pre', lineHeight: 1.7,
-                      }}>
-                        {item.code}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Memory */}
         {tab === 'memory' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div className="of-section-label">Agent Memory ({memories.length} entries)</div>
-              <div style={{ display: 'flex', gap: 8 }}>
+            {/* Stats strip */}
+            {memStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 18 }}>
+                {[
+                  { label: 'Total Memories', value: memStats.total },
+                  { label: 'Avg Importance', value: `${Math.round(memStats.avgImportance * 100)}%` },
+                  { label: 'Episodic', value: memStats.byCategory.episodic },
+                  { label: 'Procedural', value: memStats.byCategory.procedural },
+                ].map(s => (
+                  <div key={s.label} className="of-stat-card">
+                    <div className="of-stat-value">{s.value}</div>
+                    <div className="of-stat-label">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Actions row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <input
+                placeholder="Search memories..."
+                value={memorySearch}
+                onChange={e => setMemorySearch(e.target.value)}
+                style={{ fontSize: 12, padding: '5px 10px', flex: 1, minWidth: 160 }}
+              />
+              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => void handleExport()}>
+                Export
+              </button>
+              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => importFileRef.current?.click()}>
+                Import
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={e => void handleImport(e)}
+              />
+              <button className="btn-ghost" style={{ fontSize: 12, color: '#f59e0b' }} onClick={() => void handlePrune()}>
+                Prune Decayed
+              </button>
+            </div>
+
+            {(importStatus || pruneStatus) && (
+              <div style={{
+                padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 12,
+                background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981',
+              }}>
+                {importStatus ?? pruneStatus}
+              </div>
+            )}
+
+            {/* Decay rate control */}
+            <div className="card" style={{ padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 3 }}>Memory Decay Rate</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
+                    How fast memories lose importance over time. Higher = faster forgetting. Current: <strong>{(decayRate * 100).toFixed(0)}%/day</strong>
+                  </div>
+                </div>
                 <input
-                  placeholder="Search memories..."
-                  value={memorySearch}
-                  onChange={e => setMemorySearch(e.target.value)}
-                  style={{ fontSize: 12, padding: '4px 10px', width: 180 }}
+                  type="range" min="0" max="0.5" step="0.01"
+                  value={decayRate}
+                  onChange={e => handleDecayChange(parseFloat(e.target.value))}
+                  style={{ width: 120 }}
                 />
-                <button
-                  className="btn-ghost"
-                  style={{ fontSize: 12 }}
-                  onClick={() => {
-                    if (!confirm('Clear all agent memory? This cannot be undone.')) return
-                    localStorage.removeItem('agentis_memory')
-                    setMemories([])
-                    window.dispatchEvent(new CustomEvent('agentis_memory_update'))
-                  }}
-                >
-                  Clear All
-                </button>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--accent)', width: 40, textAlign: 'right' }}>
+                  {(decayRate * 100).toFixed(0)}%
+                </span>
               </div>
             </div>
+
+            {/* Memory list */}
             {memories.length === 0 ? (
-              <div className="card" style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
-                No memories stored yet. Memories are saved when agents complete tasks in the Agent Universe and you click "Save to Memory".
+              <div className="card" style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
+                No memories stored yet. Memories are auto-saved after agent tasks complete.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {memories
-                  .filter(m => !memorySearch || m.key.includes(memorySearch) || m.value.toLowerCase().includes(memorySearch.toLowerCase()) || m.agentId.includes(memorySearch))
+                  .filter(m => !memorySearch ||
+                    m.key.includes(memorySearch) ||
+                    m.value.toLowerCase().includes(memorySearch.toLowerCase()) ||
+                    m.agentId.includes(memorySearch) ||
+                    m.tags.some(t => t.includes(memorySearch))
+                  )
                   .map(m => (
                     <div key={m.id} className="card" style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                           {m.agentId}
                         </span>
-                        <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{m.key}</span>
+                        <span style={{ fontSize: 10, color: 'var(--fg)', fontFamily: 'var(--font-mono)' }}>{m.key}</span>
+                        {/* Category badge */}
                         <span style={{
-                          marginLeft: 'auto', fontSize: 9, padding: '1px 6px', borderRadius: 8,
-                          background: m.source === 'manual' ? 'var(--accent)22' : 'rgba(255,255,255,0.05)',
-                          border: `1px solid ${m.source === 'manual' ? 'var(--accent)44' : 'var(--border)'}`,
-                          color: m.source === 'manual' ? 'var(--accent)' : 'var(--muted)', fontWeight: 600,
+                          fontSize: 9, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: '0.05em',
+                          background: {episodic:'rgba(99,102,241,0.12)',semantic:'rgba(16,185,129,0.12)',procedural:'rgba(245,158,11,0.12)',general:'rgba(255,255,255,0.06)'}[m.category],
+                          border: `1px solid ${{episodic:'rgba(99,102,241,0.3)',semantic:'rgba(16,185,129,0.3)',procedural:'rgba(245,158,11,0.3)',general:'var(--border)'}[m.category]}`,
+                          color: {episodic:'#6366f1',semantic:'#10b981',procedural:'#f59e0b',general:'var(--muted)'}[m.category],
                         }}>
-                          {m.source}
+                          {m.category}
                         </span>
-                        <span style={{ fontSize: 10, color: 'var(--muted)' }}>
-                          {new Date(m.ts).toLocaleDateString()} {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {/* Importance bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+                          <div style={{ width: 40, height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.round(m.importance * 100)}%`, height: '100%', background: m.importance > 0.6 ? '#10b981' : m.importance > 0.3 ? '#f59e0b' : '#ef4444', borderRadius: 2 }} />
+                          </div>
+                          <span style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{Math.round(m.importance * 100)}%</span>
+                        </div>
+                        <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--muted)' }}>
+                          {new Date(m.ts).toLocaleDateString()} · {m.accessCount} reads
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--fg)', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: 120, overflowY: 'auto', fontFamily: 'var(--font-mono)' }}>
-                        {m.value}
+                      <div style={{ fontSize: 12, color: 'var(--fg)', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: 100, overflowY: 'auto' }}>
+                        {m.value.length > 300 ? m.value.slice(0, 300) + '…' : m.value}
                       </div>
+                      {m.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                          {m.tags.map(t => (
+                            <span key={t} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}>{t}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>

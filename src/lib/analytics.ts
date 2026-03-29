@@ -1,7 +1,8 @@
 // ── Real token usage analytics ────────────────────────────────────────────────
-// Write: localStorage (instant) + PocketBase background sync
+// Storage: IndexedDB via Dexie — no PocketBase, no localStorage cap
 
-import { isPbEnabled, pbAddAnalytics } from './pb'
+import { db } from './db'
+import type { AnalyticsRecord } from './db'
 
 export interface UsageRecord {
   id: string
@@ -26,8 +27,6 @@ export interface AnalyticsSummary {
   daily: { date: string; tokens: number; cost: number; calls: number }[]
 }
 
-const STORAGE_KEY = 'agentis_analytics'
-
 // USD per million tokens
 const MODEL_PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
   'claude-sonnet-4-20250514':  { inputPerM: 3.0,   outputPerM: 15.0  },
@@ -45,38 +44,65 @@ export function calculateCost(model: string, inputTokens: number, outputTokens: 
   return (inputTokens / 1_000_000) * p.inputPerM + (outputTokens / 1_000_000) * p.outputPerM
 }
 
-export function addUsageRecord(record: Omit<UsageRecord, 'id'>): void {
-  try {
-    const records = loadUsageRecords()
-    records.push({ ...record, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(-1000)))
-    window.dispatchEvent(new CustomEvent('agentis_analytics_update'))
-  } catch { /* storage full */ }
+function newId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
-  if (isPbEnabled()) {
-    pbAddAnalytics({
-      model: record.model,
-      persona: record.persona,
-      task: record.task,
-      input_tokens: record.inputTokens,
-      output_tokens: record.outputTokens,
-      cost: record.cost,
-      step_count: record.stepCount,
-      ts: record.ts,
-    }).catch(() => { /* silent */ })
+function dispatch(): void {
+  window.dispatchEvent(new CustomEvent('agentis_analytics_update'))
+}
+
+// ── One-time migration from localStorage ─────────────────────────────────────
+
+let _migrated = false
+
+async function ensureMigrated(): Promise<void> {
+  if (_migrated) return
+  _migrated = true
+  try {
+    const raw = localStorage.getItem('agentis_analytics')
+    if (!raw) return
+    const entries = JSON.parse(raw) as Array<{
+      id?: string; model: string; persona: string; task: string
+      inputTokens: number; outputTokens: number; cost: number; stepCount: number; ts: number
+    }>
+    if (!entries.length) return
+    const count = await db.analytics.count()
+    if (count > 0) return
+    const records: AnalyticsRecord[] = entries.map(e => ({
+      id: e.id ?? newId(),
+      model: e.model,
+      persona: e.persona,
+      task: e.task,
+      inputTokens: e.inputTokens,
+      outputTokens: e.outputTokens,
+      cost: e.cost,
+      stepCount: e.stepCount,
+      ts: e.ts,
+    }))
+    await db.analytics.bulkPut(records)
+    console.log(`[Analytics] Migrated ${records.length} records from localStorage → IndexedDB`)
+  } catch (err) {
+    console.warn('[Analytics] Migration failed:', err)
   }
 }
 
-export function loadUsageRecords(): UsageRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as UsageRecord[]) : []
-  } catch { return [] }
+// ── API ───────────────────────────────────────────────────────────────────────
+
+export function addUsageRecord(record: Omit<UsageRecord, 'id'>): void {
+  const full: AnalyticsRecord = { ...record, id: newId() }
+  db.analytics.add(full).then(() => dispatch()).catch(() => { /* storage error */ })
 }
 
-export function clearUsageRecords(): void {
-  localStorage.removeItem(STORAGE_KEY)
-  window.dispatchEvent(new CustomEvent('agentis_analytics_update'))
+export async function loadUsageRecords(): Promise<UsageRecord[]> {
+  await ensureMigrated()
+  const records = await db.analytics.orderBy('ts').toArray()
+  return records as UsageRecord[]
+}
+
+export async function clearUsageRecords(): Promise<void> {
+  await db.analytics.clear()
+  dispatch()
 }
 
 export function getAnalyticsSummary(records: UsageRecord[]): AnalyticsSummary {
