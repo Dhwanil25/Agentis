@@ -11,339 +11,386 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#06060f; --bg2:#0a0a1a; --bg3:#0d0d20;
-  --surface:rgba(255,255,255,0.04); --surface2:rgba(255,255,255,0.07);
-  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
-  --fg:#f0f0ff; --muted:#6b7280; --dim:#4b5563;
-  --accent:#6366f1; --accent2:#8b5cf6; --green:#10b981; --red:#ef4444; --yellow:#f59e0b;
+  --bg:#0e0e0e; --bg2:#161616; --bg3:#1e1e1e;
+  --border:#242424; --border2:#363636;
+  --fg:#f0f0f0; --muted:#888; --dim:#555;
+  --accent:#a78bfa; --accent2:#7c3aed;
+  --green:#22c55e; --yellow:#eab308; --red:#ef4444;
   --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
 }
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--fg);font-family:var(--font);overflow-x:hidden;-webkit-font-smoothing:antialiased}
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.022;pointer-events:none;z-index:999}
 
-/* Nav */
-nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;padding:14px 48px;transition:background .3s,border-color .3s;border-bottom:1px solid transparent}
-nav.s{background:rgba(6,6,15,.9);backdrop-filter:blur(20px);border-color:var(--border)}
-.logo{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--fg);font-size:15px;font-weight:700;letter-spacing:-.02em}
-.logo img{width:26px;height:26px;border-radius:7px;object-fit:contain}
-.logo-dot{color:var(--accent)}
-.nav-r{display:flex;align-items:center;gap:28px}
-.nav-r a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s}
-.nav-r a:hover{color:var(--fg)}
-.nav-cta{padding:7px 18px;border-radius:8px;background:var(--accent);color:#fff!important;font-weight:600;font-size:13px;transition:opacity .2s,transform .15s!important}
-.nav-cta:hover{opacity:.85;transform:translateY(-1px)!important}
+/* ── Nav ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;border-bottom:1px solid transparent;transition:background .25s,border-color .25s}
+nav.s{background:rgba(14,14,14,.94);backdrop-filter:blur(16px);border-color:var(--border)}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--fg);font-size:14px;font-weight:700;letter-spacing:-.02em}
+.logo img{width:24px;height:24px;border-radius:6px;object-fit:contain}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s}
+.nav-links a:hover{color:var(--fg)}
+.nav-cta{padding:7px 16px;border-radius:7px;background:var(--fg);color:#0e0e0e!important;font-weight:600;font-size:13px;transition:opacity .15s}
+.nav-cta:hover{opacity:.88}
 
-/* ═══ HERO ═══ */
-.hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;gap:0;padding-top:72px;position:relative;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 80% at 30% 40%,rgba(99,102,241,.07) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 80% 60%,rgba(139,92,246,.05) 0%,transparent 60%);pointer-events:none}
+/* ── Hero ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 48px 80px;text-align:center;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:100px;border:1px solid var(--border2);font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-bottom:36px}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:clamp(38px,5.5vw,76px);font-weight:700;letter-spacing:-.04em;line-height:1.05;margin-bottom:22px;text-transform:lowercase}
+.hero h1 em{font-style:normal;color:var(--muted)}
+.hero-sub{font-size:16px;line-height:1.8;color:var(--muted);max-width:520px;margin:0 auto 44px}
+.hero-actions{display:flex;align-items:center;gap:12px;margin-bottom:56px}
+.btn-primary{padding:11px 24px;border-radius:8px;background:var(--fg);color:#0e0e0e;font-size:14px;font-weight:600;text-decoration:none;font-family:var(--font);transition:opacity .15s}
+.btn-primary:hover{opacity:.88}
+.btn-secondary{padding:11px 24px;border-radius:8px;border:1px solid var(--border2);color:var(--muted);font-size:14px;text-decoration:none;font-family:var(--font);transition:all .15s}
+.btn-secondary:hover{border-color:var(--border2);color:var(--fg)}
+.hero-code{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:0;overflow:hidden;width:100%;max-width:520px;text-align:left;font-family:var(--mono)}
+.code-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.code-dot{width:8px;height:8px;border-radius:50%}
+.code-body{padding:16px 18px;font-size:12.5px;line-height:2;color:#aaa}
+.code-body .c-dim{color:var(--dim)}
+.code-body .c-green{color:var(--green)}
+.code-body .c-accent{color:var(--accent)}
+.code-body .c-white{color:var(--fg)}
+.hero-stats{display:flex;align-items:center;gap:36px}
+.hstat{text-align:center}
+.hstat-val{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.hstat-label{font-size:11px;color:var(--muted);margin-top:2px;text-transform:lowercase}
+.hstat-div{width:1px;height:28px;background:var(--border)}
 
-/* Left */
-.hero-left{display:flex;flex-direction:column;justify-content:center;padding:60px 48px 60px 52px;position:relative;z-index:10}
-.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:4px 12px 4px 5px;border-radius:100px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.22);font-size:11.5px;color:var(--accent);font-weight:500;margin-bottom:24px;width:fit-content}
-.badge-pulse{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:bp 2s ease infinite}
-@keyframes bp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-.hero-h1{font-size:clamp(34px,4.2vw,58px);font-weight:700;line-height:1.07;letter-spacing:-.03em;margin-bottom:16px}
-.hero-h1 .g{background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-sub{font-size:15.5px;line-height:1.75;color:var(--muted);margin-bottom:32px;max-width:460px}
-
-/* Task input */
-.task-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:4px 4px 4px 16px;display:flex;align-items:center;gap:8px;margin-bottom:20px;transition:border-color .2s;max-width:500px}
-.task-box:focus-within{border-color:rgba(99,102,241,.5);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-.task-box input{flex:1;background:transparent;border:none;outline:none;font-family:var(--font);font-size:14px;color:var(--fg);padding:8px 0}
-.task-box input::placeholder{color:var(--dim)}
-.launch-btn{padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:6px}
-.launch-btn:hover{opacity:.88;transform:translateY(-1px)}
-.launch-btn.running{background:linear-gradient(135deg,#374151,#1f2937);cursor:default}
-.example-tasks{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:32px}
-.ex-task{font-size:11.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--font)}
-.ex-task:hover{border-color:var(--border2);color:var(--fg);background:var(--surface)}
-.hero-meta{display:flex;gap:22px}
-.meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
-.meta-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
-
-/* Right — live demo panel */
-.hero-right{display:flex;flex-direction:column;padding:80px 48px 40px 0;gap:12px;position:relative;z-index:10}
-.demo-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;flex:1;display:flex;flex-direction:column}
-.demo-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);flex-shrink:0}
-.tb-dot{width:9px;height:9px;border-radius:50%}
-.tb-title{font-size:12px;color:var(--muted);margin-left:4px;flex:1}
-.tb-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:5px}
-.tb-live{width:6px;height:6px;background:var(--green);border-radius:50%;animation:bp 1.4s ease infinite}
-.demo-body{display:flex;flex:1;min-height:0;overflow:hidden}
-.demo-canvas-wrap{flex:1;position:relative}
-#demo-canvas{width:100%;height:100%;display:block}
-.demo-feed{width:210px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
-.feed-header{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 12px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
-.feed-msgs{flex:1;overflow-y:auto;padding:6px 0;display:flex;flex-direction:column;gap:0}
-.feed-msgs::-webkit-scrollbar{display:none}
-.feed-msg{padding:6px 10px;font-size:10.5px;line-height:1.5;border-bottom:1px solid rgba(255,255,255,.03);animation:msg-in .3s ease}
-@keyframes msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.feed-from{font-weight:600;font-size:10px;margin-bottom:1px}
-.feed-text{color:var(--muted)}
-
-/* Output stream */
-.output-panel{background:var(--bg2);border:1px solid var(--border);border-radius:14px;max-height:130px;overflow:hidden;flex-shrink:0}
-.output-header{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
-.output-body{padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.7;color:rgba(240,240,255,.7);overflow-y:auto;max-height:88px}
-.output-body::-webkit-scrollbar{display:none}
-.cursor{display:inline-block;width:6px;height:12px;background:var(--accent);margin-left:1px;vertical-align:text-bottom;animation:cur .8s step-end infinite}
-@keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
-
-/* ═══ TICKER ═══ */
-.ticker{padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:rgba(255,255,255,.015)}
-.tick-inner{display:flex;animation:tick 28s linear infinite;white-space:nowrap}
+/* ── Ticker ── */
+.ticker{padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:var(--bg2)}
+.tick-inner{display:flex;animation:tick 30s linear infinite;white-space:nowrap}
 .tick-inner:hover{animation-play-state:paused}
-.tick-item{display:inline-flex;align-items:center;gap:7px;padding:0 28px;font-size:12px;font-weight:500;color:var(--muted);flex-shrink:0}
+.tick-item{display:inline-flex;align-items:center;gap:6px;padding:0 28px;font-size:12px;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
 .tick-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
-/* ═══ LIVE ACTIVITY ═══ */
-.activity{padding:100px 48px}
-.activity-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
-.activity-left .section-label{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-.activity-left h2{font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px}
-.activity-left p{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:28px}
-.agent-stats{display:flex;gap:24px;flex-wrap:wrap}
-.astat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:100px}
-.astat-val{font-size:26px;font-weight:700;letter-spacing:-.03em;color:var(--fg);font-variant-numeric:tabular-nums}
-.astat-val span{font-size:14px;color:var(--accent)}
-.astat-label{font-size:11px;color:var(--muted);margin-top:2px}
+/* ── Section commons ── */
+.section{padding:100px 48px}
+.section-inner{max-width:1080px;margin:0 auto}
+.label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:16px}
+.section-h{font-size:clamp(26px,3.2vw,42px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px;text-transform:lowercase}
+.section-p{font-size:15px;line-height:1.8;color:var(--muted);max-width:500px}
 
-/* Live agent list */
-.agent-list{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.agent-list-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px}
-.agent-list-header span{color:var(--muted)}
-.agent-list-header .live{color:var(--green);display:flex;align-items:center;gap:5px}
-.agent-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background .15s}
-.agent-row:last-child{border-bottom:none}
-.agent-row:hover{background:var(--surface)}
-.agent-hex{width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;position:relative}
-.agent-info{flex:1;min-width:0}
-.agent-name{font-size:12px;font-weight:600;color:var(--fg)}
-.agent-model{font-size:10px;color:var(--muted);font-family:var(--mono)}
-.agent-output-preview{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
-.agent-status{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
-.status-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
-.status-working{background:rgba(99,102,241,.15);color:var(--accent);border:1px solid rgba(99,102,241,.25)}
-.status-done{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.22)}
-.status-waiting{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid rgba(107,114,128,.2)}
-.agent-tokens{font-size:9px;color:var(--dim);font-family:var(--mono)}
+/* ── Demo ── */
+.demo-wrap{margin-top:52px;display:grid;grid-template-columns:1fr 320px;gap:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;height:460px}
+.demo-canvas-pane{position:relative;background:var(--bg2)}
+.demo-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
+.tb-dots{display:flex;gap:5px}
+.tb-dot{width:9px;height:9px;border-radius:50%}
+.tb-label{font-size:11.5px;color:var(--muted);font-family:var(--mono);flex:1}
+.tb-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px}
+.tb-live{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.4s ease infinite}
+#demo-canvas{width:100%;height:100%;display:block}
+.demo-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
+.side-header{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:11px 14px;border-bottom:1px solid var(--border);font-family:var(--mono)}
+.feed-msgs{flex:1;overflow-y:auto;padding:4px 0}
+.feed-msgs::-webkit-scrollbar{display:none}
+.feed-msg{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;line-height:1.5}
+.feed-from{font-weight:600;font-size:10px;margin-bottom:2px;font-family:var(--mono)}
+.feed-text{color:var(--muted)}
+.output-pane{border-top:1px solid var(--border);padding:12px 14px}
+.output-label{font-size:10px;color:var(--dim);font-family:var(--mono);margin-bottom:6px}
+#output-body{font-family:var(--mono);font-size:11px;line-height:1.7;color:rgba(240,240,255,.65);max-height:80px;overflow-y:auto}
+#output-body::-webkit-scrollbar{display:none}
 
-/* ═══ FEATURES ═══ */
-.features{padding:100px 48px;background:radial-gradient(ellipse 100% 50% at 50% 0%,rgba(99,102,241,.04) 0%,transparent 60%)}
-.section-label{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-.section-title{font-size:clamp(28px,3.5vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px}
-.section-sub{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:52px;max-width:520px}
-.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.feat-card{padding:24px;border-radius:14px;background:var(--surface);border:1px solid var(--border);transition:all .22s;position:relative;overflow:hidden}
-.feat-card:hover{border-color:var(--border2);transform:translateY(-2px);background:var(--surface2)}
-.feat-card::before{content:'';position:absolute;inset:0;border-radius:14px;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at top left,rgba(99,102,241,.07),transparent 55%)}
-.feat-card:hover::before{opacity:1}
-.feat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px}
-.feat-title{font-size:14px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
-.feat-desc{font-size:12.5px;line-height:1.65;color:var(--muted)}
+/* task input row */
+.demo-input-row{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
+.demo-input-row input{flex:1;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:12px;color:var(--fg)}
+.demo-input-row input::placeholder{color:var(--dim)}
+#launch-btn{padding:6px 14px;border-radius:6px;background:var(--accent2);border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;transition:opacity .15s;white-space:nowrap}
+#launch-btn:hover{opacity:.85}
+#launch-btn.running{background:#2a2a2a;cursor:default}
+.example-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.ex-task{font-size:10.5px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);color:var(--dim);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--mono)}
+.ex-task:hover{border-color:var(--border2);color:var(--fg)}
 
-/* ═══ PROVIDERS ═══ */
-.providers{padding:100px 48px}
-.prov-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:44px}
-.prov-card{padding:14px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:7px;transition:all .2s;cursor:default}
-.prov-card:hover{border-color:var(--border2);background:var(--surface2);transform:translateY(-2px)}
-.prov-dot{width:9px;height:9px;border-radius:50%}
-.prov-name{font-size:11.5px;font-weight:500}
-.prov-desc{font-size:10px;color:var(--muted);text-align:center;line-height:1.4}
+/* ── Features ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:52px}
+.feat-card{background:var(--bg);padding:28px 26px;transition:background .15s}
+.feat-card:hover{background:var(--bg2)}
+.feat-icon{font-size:20px;margin-bottom:14px}
+.feat-title{font-size:14px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px;text-transform:lowercase}
+.feat-desc{font-size:13px;line-height:1.7;color:var(--muted)}
 
-/* ═══ HOW ═══ */
-.how{padding:100px 48px;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(99,102,241,.04) 0%,transparent 60%)}
+/* ── How ── */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;position:relative}
-.steps::before{content:'';position:absolute;top:26px;left:calc(16.6% + 26px);right:calc(16.6% + 26px);height:1px;background:linear-gradient(to right,var(--accent),var(--accent2));opacity:.25}
+.steps::before{content:'';position:absolute;top:22px;left:calc(16.6% + 22px);right:calc(16.6% + 22px);height:1px;background:var(--border2)}
 .step{padding:0 24px;text-align:center}
-.step-n{width:52px;height:52px;border-radius:50%;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);margin:0 auto 20px;position:relative;z-index:1}
-.step-t{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:9px}
-.step-d{font-size:13px;line-height:1.7;color:var(--muted)}
+.step-n{width:44px;height:44px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);margin:0 auto 20px;position:relative;z-index:1;background:var(--bg);font-family:var(--mono)}
+.step-t{font-size:15px;font-weight:600;margin-bottom:10px;letter-spacing:-.01em;text-transform:lowercase}
+.step-d{font-size:13px;line-height:1.75;color:var(--muted)}
 
-/* ═══ CTA ═══ */
-.cta{padding:130px 48px;text-align:center;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(99,102,241,.08) 0%,transparent 70%)}
-.cta h2{font-size:clamp(30px,4.5vw,56px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:16px}
-.cta p{font-size:15px;color:var(--muted);margin-bottom:36px;line-height:1.75}
+/* ── Live activity ── */
+.activity-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.stat-row{display:flex;gap:28px;margin-bottom:32px}
+.stat-pill{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px}
+.stat-pill-val{font-size:15px;font-weight:700;font-family:var(--mono)}
+.stat-pill-label{font-size:11px;color:var(--muted)}
+.agent-rows{display:flex;flex-direction:column;gap:1px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.agent-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.agent-row:last-child{border-bottom:none}
+.agent-hex svg{flex-shrink:0}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:12.5px;font-weight:600;text-transform:capitalize;letter-spacing:-.01em;margin-bottom:1px}
+.agent-model{font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+.agent-output-preview{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.agent-status{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.status-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+.status-working{background:rgba(167,139,250,.12);color:var(--accent)}
+.status-done{background:rgba(34,197,94,.1);color:var(--green)}
+.status-waiting{background:rgba(255,255,255,.05);color:var(--dim)}
+.agent-tokens{font-size:10px;color:var(--dim);font-family:var(--mono)}
+
+/* ── Providers ── */
+.prov-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:40px}
+.prov-card{background:var(--bg);padding:18px 16px;display:flex;align-items:center;gap:9px;transition:background .15s}
+.prov-card:hover{background:var(--bg2)}
+.prov-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.prov-name{font-size:13px;font-weight:500}
+.prov-desc{display:none}
+
+/* ── CTA ── */
+.cta-section{padding:130px 48px;text-align:center;border-top:1px solid var(--border)}
+.cta-section h2{font-size:clamp(30px,4vw,54px);font-weight:700;letter-spacing:-.04em;line-height:1.1;margin-bottom:16px;text-transform:lowercase}
+.cta-section p{font-size:15px;color:var(--muted);margin-bottom:36px;line-height:1.75}
 .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn-p{padding:12px 26px;border-radius:10px;background:var(--accent);color:#fff;font-size:14px;font-weight:600;text-decoration:none;font-family:var(--font);transition:opacity .2s,transform .15s,box-shadow .2s;box-shadow:0 0 28px rgba(99,102,241,.28)}
-.btn-p:hover{opacity:.87;transform:translateY(-2px);box-shadow:0 0 44px rgba(99,102,241,.42);color:#fff}
-.btn-g{padding:12px 26px;border-radius:10px;border:1px solid var(--border2);color:var(--muted);font-size:14px;text-decoration:none;font-family:var(--font);transition:all .2s}
-.btn-g:hover{border-color:rgba(255,255,255,.25);color:var(--fg)}
-.cta-meta{margin-top:24px;font-size:12px;color:var(--dim)}
+.cta-meta{margin-top:22px;font-size:12px;color:var(--dim);font-family:var(--mono)}
 
-/* Footer */
-footer{padding:32px 48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.foot-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:600}
-.foot-logo img{width:18px;height:18px;border-radius:5px;object-fit:contain;opacity:.55}
+/* ── Footer ── */
+footer{padding:28px 48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.foot-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--dim);font-size:13px;font-weight:600;font-family:var(--mono)}
+.foot-logo img{width:16px;height:16px;border-radius:4px;object-fit:contain;opacity:.4}
 .foot-links{display:flex;gap:20px}
-.foot-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s}
+.foot-links a{font-size:12px;color:var(--dim);text-decoration:none;transition:color .15s;font-family:var(--mono)}
 .foot-links a:hover{color:var(--fg)}
 
-/* Fade in */
-.fi{opacity:0;transform:translateY(20px);transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1)}
+/* ── Fade in ── */
+.fi{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
 .fi.v{opacity:1;transform:translateY(0)}
 
-@media(max-width:1100px){.hero{grid-template-columns:1fr}.hero-right{display:none}.feat-grid{grid-template-columns:repeat(2,1fr)}.prov-grid{grid-template-columns:repeat(4,1fr)}.activity-inner{grid-template-columns:1fr}}
-@media(max-width:768px){nav{padding:12px 18px}.nav-r a:not(.nav-cta){display:none}.hero-left{padding:40px 18px 40px 20px}.features,.providers,.how,.activity,.cta{padding:70px 18px}.feat-grid{grid-template-columns:1fr}.prov-grid{grid-template-columns:repeat(3,1fr)}.steps{grid-template-columns:1fr;gap:36px}.steps::before{display:none}footer{padding:24px 18px;flex-direction:column;gap:16px;text-align:center}.foot-links{flex-wrap:wrap;justify-content:center}}
+@media(max-width:1100px){.demo-wrap{grid-template-columns:1fr}.demo-side{display:none}.bench-grid{grid-template-columns:1fr}.feat-grid{grid-template-columns:repeat(2,1fr)}.prov-grid{grid-template-columns:repeat(4,1fr)}.activity-inner{grid-template-columns:1fr}}
+@media(max-width:768px){nav{padding:12px 18px}.nav-links a:not(.nav-cta){display:none}.hero{padding:100px 20px 60px}.section{padding:70px 20px}.hero h1{font-size:clamp(32px,8vw,52px)}.feat-grid{grid-template-columns:1fr}.prov-grid{grid-template-columns:repeat(3,1fr)}.steps{grid-template-columns:1fr;gap:36px}.steps::before{display:none}.hero-actions{flex-direction:column;width:100%}.hero-code{max-width:100%}footer{padding:20px 18px;flex-direction:column;gap:14px;text-align:center}.foot-links{flex-wrap:wrap;justify-content:center}}
 </style>
 </head>
 <body>
 
 <nav id="nav">
-  <a href="#" class="logo">
-    <img src="/favicon.png" alt="Agentis"/>
-    Agentis<span class="logo-dot">.</span>
-  </a>
-  <div class="nav-r">
-    <a href="#features">Features</a>
-    <a href="#how">How it works</a>
-    <a href="#providers">Providers</a>
-    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">GitHub ↗</a>
-    <a href="/app.html" class="nav-cta">Open app →</a>
+  <a href="#" class="logo"><img src="/favicon.png" alt="Agentis"/>agentis</a>
+  <div class="nav-links">
+    <a href="#demo">demo</a>
+    <a href="#features">features</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">github ↗</a>
+    <a href="/app.html" class="nav-cta">open app →</a>
   </div>
 </nav>
 
-<!-- ═══ HERO ═══ -->
-<section class="hero" id="top">
-  <div class="hero-bg"></div>
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge"><span class="badge-dot"></span>open source · mit license · v0.3.0</div>
 
-  <div class="hero-left">
-    <div class="hero-badge"><span class="badge-pulse"></span>v0.3 · Open source · 12 providers</div>
-    <h1 class="hero-h1">Not one AI.<br/><span class="g">A whole team.</span></h1>
-    <p class="hero-sub">Type a task. Agentis spawns a coordinated team of specialized agents across multiple LLM providers — working in parallel, visible in real time.</p>
+  <h1>deploy a team.<br/><em>not a prompt.</em></h1>
 
-    <div class="task-box">
-      <input id="task-input" type="text" placeholder="Describe a complex task…" maxlength="120"/>
-      <button class="launch-btn" id="launch-btn" onclick="launchDemo()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Launch
-      </button>
+  <p class="hero-sub">describe any task. agentis spawns a coordinated team of specialized agents across 12 llm providers. watch them think, collaborate, and synthesize — live.</p>
+
+  <div class="hero-code fi">
+    <div class="code-bar">
+      <div class="code-dot" style="background:#ef4444"></div>
+      <div class="code-dot" style="background:#f59e0b"></div>
+      <div class="code-dot" style="background:#22c55e"></div>
     </div>
-
-    <div class="example-tasks">
-      <span class="ex-task" onclick="setTask(this)">Analyze AI market trends</span>
-      <span class="ex-task" onclick="setTask(this)">Build a REST API spec</span>
-      <span class="ex-task" onclick="setTask(this)">Write a competitor report</span>
-      <span class="ex-task" onclick="setTask(this)">Debug this React app</span>
-    </div>
-
-    <div class="hero-meta">
-      <div class="meta-item"><span class="meta-dot"></span>No backend required</div>
-      <div class="meta-item"><span class="meta-dot"></span>MIT licensed</div>
-      <div class="meta-item"><span class="meta-dot"></span>Runs in your browser</div>
+    <div class="code-body">
+      <div><span class="c-dim">$</span> <span class="c-green">git clone</span> <span class="c-white">github.com/Dhwanil25/Agentis</span></div>
+      <div><span class="c-dim">$</span> <span class="c-green">npm install</span> <span class="c-dim">&amp;&amp;</span> <span class="c-green">npm run dev</span></div>
+      <div><span class="c-dim">&nbsp;</span></div>
+      <div><span class="c-accent">✓</span> <span class="c-dim">ready in 1.2s · no backend · no python · no docker</span></div>
     </div>
   </div>
 
-  <div class="hero-right">
-    <div class="demo-panel">
-      <div class="demo-topbar">
-        <div class="tb-dot" style="background:#ef4444"></div>
-        <div class="tb-dot" style="background:#f59e0b;margin-left:4px"></div>
-        <div class="tb-dot" style="background:#10b981;margin-left:4px"></div>
-        <span class="tb-title">Agentis Universe</span>
-        <div class="tb-status"><div class="tb-live"></div><span id="status-text">Idle</span></div>
-      </div>
-      <div class="demo-body">
-        <div class="demo-canvas-wrap">
+  <div class="hero-actions fi" style="transition-delay:.1s">
+    <a href="/app.html" class="btn-primary">open agentis free →</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank" class="btn-secondary">star on github ↗</a>
+  </div>
+
+  <div class="hero-stats fi" style="transition-delay:.2s">
+    <div class="hstat"><div class="hstat-val">12</div><div class="hstat-label">llm providers</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">8</div><div class="hstat-label">agent roles</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">0</div><div class="hstat-label">backend needed</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">~2min</div><div class="hstat-label">to first run</div></div>
+  </div>
+</section>
+
+<!-- ── TICKER ── -->
+<div class="ticker">
+  <div class="tick-inner" id="ticker"></div>
+</div>
+
+<!-- ── DEMO ── -->
+<section class="section" id="demo">
+  <div class="section-inner">
+    <div class="label fi">live demo</div>
+    <h2 class="section-h fi">watch every agent think out loud.</h2>
+    <p class="section-p fi">each agent streams its output token by token. dependencies resolve automatically. upstream context flows downstream in real time.</p>
+
+    <div class="demo-wrap fi" style="transition-delay:.1s">
+      <!-- canvas pane -->
+      <div class="demo-canvas-pane" style="display:flex;flex-direction:column">
+        <div class="demo-topbar">
+          <div class="tb-dots">
+            <div class="tb-dot" style="background:#ef4444"></div>
+            <div class="tb-dot" style="background:#f59e0b"></div>
+            <div class="tb-dot" style="background:#22c55e"></div>
+          </div>
+          <span class="tb-label">agent universe</span>
+          <span class="tb-status"><span class="tb-live"></span><span id="status-text">Idle</span></span>
+        </div>
+        <div style="flex:1;position:relative">
           <canvas id="demo-canvas"></canvas>
         </div>
-        <div class="demo-feed">
-          <div class="feed-header">Agent messages</div>
-          <div class="feed-msgs" id="feed-msgs"></div>
+        <div class="example-chips">
+          <button class="ex-task" onclick="setTask(this)">Analyze AI market trends</button>
+          <button class="ex-task" onclick="setTask(this)">Build a REST API spec</button>
+          <button class="ex-task" onclick="setTask(this)">Write a competitor report</button>
+          <button class="ex-task" onclick="setTask(this)">Debug this React app</button>
+        </div>
+        <div class="demo-input-row">
+          <input id="task-input" type="text" placeholder="describe a task…" value="Analyze AI market trends"/>
+          <button id="launch-btn" onclick="launchDemo()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch
+          </button>
+        </div>
+        <div class="output-pane">
+          <div class="output-label">// synthesis output</div>
+          <div id="output-body"><span style="color:var(--dim)">awaiting agents…</span></div>
         </div>
       </div>
-    </div>
-    <div class="output-panel">
-      <div class="output-header">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-        Synthesis output
-      </div>
-      <div class="output-body" id="output-body"><span style="color:var(--dim)">Launch a task to see the synthesis…</span></div>
-    </div>
-  </div>
-</section>
 
-<!-- Ticker -->
-<div class="ticker"><div class="tick-inner" id="ticker"></div></div>
-
-<!-- ═══ LIVE ACTIVITY ═══ -->
-<section class="activity" id="activity">
-  <div class="activity-inner">
-    <div class="activity-left fi">
-      <div class="section-label">Live orchestration</div>
-      <h2>Watch every agent<br/>think out loud</h2>
-      <p>Agentis doesn't hide its work. Every agent streams its output token by token. Dependencies resolve automatically. Upstream context flows downstream. You see the full reasoning chain as it unfolds.</p>
-      <div class="agent-stats">
-        <div class="astat"><div class="astat-val" id="stat-agents">0</div><div class="astat-label">Agents spawned</div></div>
-        <div class="astat"><div class="astat-val" id="stat-tokens">0<span>k</span></div><div class="astat-label">Tokens processed</div></div>
-        <div class="astat"><div class="astat-val" id="stat-runs">0</div><div class="astat-label">Runs simulated</div></div>
+      <!-- side feed -->
+      <div class="demo-side">
+        <div class="side-header">agent feed</div>
+        <div class="feed-msgs" id="feed-msgs"></div>
       </div>
     </div>
-    <div class="agent-list fi" style="transition-delay:.12s">
-      <div class="agent-list-header">
-        <span>Active agents</span>
-        <span class="live"><div class="tb-live"></div>Live</span>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="label fi">features</div>
+    <h2 class="section-h fi">everything your agent team needs.</h2>
+    <p class="section-p fi">built for tasks too complex for a single prompt.</p>
+
+    <div class="feat-grid fi" style="transition-delay:.1s">
+      <div class="feat-card">
+        <div class="feat-icon">⬡</div>
+        <div class="feat-title">live agent canvas</div>
+        <div class="feat-desc">hexagonal nodes, bezier edges, animated particles, real-time thought bubbles. watch the entire execution unfold visually as it happens.</div>
       </div>
-      <div id="agent-rows"></div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">12 providers in parallel</div>
+        <div class="feat-desc">mix anthropic, openai, google, groq, mistral, deepseek, cohere, xai, together, ollama and more in a single run. each agent gets the best model for its role.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">↻</div>
+        <div class="feat-title">auto failover</div>
+        <div class="feat-desc">when a provider goes down mid-task, agents switch to the next available one automatically. no data loss, no retries needed, no configuration required.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◈</div>
+        <div class="feat-title">persistent universe</div>
+        <div class="feat-desc">follow-up questions recall relevant old agents and add new ones. knowledge compounds across turns. your agent team builds context session over session.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⊕</div>
+        <div class="feat-title">skills marketplace</div>
+        <div class="feat-desc">install specialized skills from skills.sh and assign them to specific agent roles. one command to extend what your agents can do.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◎</div>
+        <div class="feat-title">per-agent cost tracking</div>
+        <div class="feat-desc">every agent shows exact token counts and usd cost in real time. full analytics dashboard tracks spend across all runs and providers.</div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ═══ FEATURES ═══ -->
-<section class="features" id="features">
-  <div class="section-label fi">Features</div>
-  <h2 class="section-title fi">Built for real work,<br/>not demos</h2>
-  <p class="section-sub fi">Every feature is designed around one principle: make the agents' work visible and trustworthy.</p>
-  <div class="feat-grid">
-    <div class="feat-card fi"><div class="feat-icon" style="background:rgba(99,102,241,.15)">⬡</div><div class="feat-title">Agent Universe Canvas</div><div class="feat-desc">Interactive hexagonal canvas showing each agent's role, provider, live output, token count, and dependencies in real time. Watch the orchestration graph build itself.</div></div>
-    <div class="feat-card fi" style="transition-delay:.05s"><div class="feat-icon" style="background:rgba(16,185,129,.15)">⚡</div><div class="feat-title">Smart Failover</div><div class="feat-desc">If a provider fails mid-stream, agents automatically switch to the next available one. Zero data loss — output accumulates seamlessly across provider switches.</div></div>
-    <div class="feat-card fi" style="transition-delay:.08s"><div class="feat-icon" style="background:rgba(234,179,8,.15)">🔍</div><div class="feat-title">Live Web Search</div><div class="feat-desc">Researcher and analyst agents auto-inject Tavily web search results into their context before generating output. Real-time knowledge, not just training data.</div></div>
-    <div class="feat-card fi" style="transition-delay:.11s"><div class="feat-icon" style="background:rgba(139,92,246,.15)">🧠</div><div class="feat-title">Persistent Universe</div><div class="feat-desc">Ask follow-ups and the relevant agents are recalled with their full context. New agents spawn for what's new. The knowledge graph compounds across every turn.</div></div>
-    <div class="feat-card fi" style="transition-delay:.14s"><div class="feat-icon" style="background:rgba(249,115,22,.15)">📦</div><div class="feat-title">skills.sh Integration</div><div class="feat-desc">Search 90,000+ skills from the skills.sh registry. Install and assign them to specific agent roles — specialized procedural knowledge injected at runtime.</div></div>
-    <div class="feat-card fi" style="transition-delay:.17s"><div class="feat-icon" style="background:rgba(34,211,238,.15)">🌐</div><div class="feat-title">Browser Agent</div><div class="feat-desc">A dedicated agent autonomously navigates live websites using PinchTab — navigates, reads, clicks, and fills forms to gather real-time data from the web.</div></div>
+<!-- ── LIVE ACTIVITY ── -->
+<section class="section" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="section-inner">
+    <div class="activity-inner">
+      <div>
+        <div class="label fi">live activity</div>
+        <h2 class="section-h fi">every agent runs in the open.</h2>
+        <p class="section-p fi" style="margin-bottom:28px">no black boxes. see exactly which model is running, what it's thinking, how many tokens it's used, and what it found.</p>
+        <div class="stat-row fi" style="transition-delay:.1s">
+          <div class="stat-pill">
+            <span class="stat-pill-val" style="color:var(--accent)" id="stat-agents">0</span>
+            <span class="stat-pill-label">agents spawned</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-pill-val" style="color:var(--green)"><span id="stat-tokens">0</span><span style="font-size:11px">k</span></span>
+            <span class="stat-pill-label">tokens streamed</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-pill-val" id="stat-runs">0</span>
+            <span class="stat-pill-label">runs completed</span>
+          </div>
+        </div>
+      </div>
+      <div class="agent-rows fi" style="transition-delay:.15s" id="agent-rows"></div>
+    </div>
   </div>
 </section>
 
-<!-- ═══ PROVIDERS ═══ -->
-<section class="providers" id="providers">
-  <div class="section-label fi">Providers</div>
-  <h2 class="section-title fi">12 LLM providers.<br/>One orchestration layer.</h2>
-  <p class="section-sub fi">Each agent is assigned the best provider and model tier for its role. Spread a single task across Anthropic, OpenAI, Google, and Groq simultaneously.</p>
-  <div class="prov-grid" id="prov-grid"></div>
-</section>
-
-<!-- ═══ HOW ═══ -->
-<section class="how" id="how">
-  <div class="section-label fi" style="text-align:center">How it works</div>
-  <h2 class="section-title fi" style="text-align:center;max-width:560px;margin:0 auto 12px">From one sentence<br/>to a full agent team</h2>
-  <p style="text-align:center;font-size:15px;color:var(--muted);margin-bottom:0" class="fi">Three phases. Fully automatic. Completely visible.</p>
-  <div class="steps">
-    <div class="step fi"><div class="step-n">01</div><div class="step-t">Plan</div><div class="step-d">The orchestrator analyzes your task, breaks it into 2–12 sub-tasks, assigns roles and providers, and maps out which agents can run in parallel vs. sequentially.</div></div>
-    <div class="step fi" style="transition-delay:.1s"><div class="step-n">02</div><div class="step-t">Execute</div><div class="step-d">Parallel agents fire simultaneously. Dependent agents receive upstream context and execute in order. Every output streams live. Failover triggers automatically.</div></div>
-    <div class="step fi" style="transition-delay:.2s"><div class="step-n">03</div><div class="step-t">Synthesize</div><div class="step-d">The orchestrator merges all outputs into one cohesive answer. Ask a follow-up and the universe extends — existing agents recalled, new ones spawned as needed.</div></div>
+<!-- ── HOW ── -->
+<section class="section">
+  <div class="section-inner">
+    <div class="label fi" style="text-align:center">how it works</div>
+    <h2 class="section-h fi" style="text-align:center;max-width:480px;margin:0 auto 10px">one sentence. full agent team.</h2>
+    <p class="fi" style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:0">three phases. fully automatic. completely visible.</p>
+    <div class="steps">
+      <div class="step fi"><div class="step-n">01</div><div class="step-t">plan</div><div class="step-d">the orchestrator analyzes your task, breaks it into 2–12 sub-tasks, assigns roles and providers, and maps which agents run in parallel vs. sequentially.</div></div>
+      <div class="step fi" style="transition-delay:.1s"><div class="step-n">02</div><div class="step-t">execute</div><div class="step-d">parallel agents fire simultaneously. dependent agents receive upstream context automatically. every output streams live. failover triggers if needed.</div></div>
+      <div class="step fi" style="transition-delay:.2s"><div class="step-n">03</div><div class="step-t">synthesize</div><div class="step-d">the orchestrator merges all outputs into one cohesive answer. ask a follow-up and the universe extends — old agents recalled, new ones spawned.</div></div>
+    </div>
   </div>
 </section>
 
-<!-- ═══ CTA ═══ -->
-<section class="cta">
+<!-- ── PROVIDERS ── -->
+<section class="section" id="providers" style="padding-top:0">
+  <div class="section-inner">
+    <div class="label fi">supported providers</div>
+    <h2 class="section-h fi">12 providers. one interface.</h2>
+    <p class="section-p fi">paste your api key and it works. no code changes, no config files.</p>
+    <div class="prov-grid fi" style="transition-delay:.1s" id="prov-grid"></div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
   <div class="fi">
-    <h2>Your next build starts<br/>with one sentence.</h2>
-    <p>Free. Open source. No account needed.<br/>Bring your API key and run a full agent team in under 60 seconds.</p>
+    <h2>your next build starts<br/>with one sentence.</h2>
+    <p>free. open source. no account needed.<br/>bring your api key and run a full agent team in under 60 seconds.</p>
     <div class="cta-btns">
-      <a href="/app.html" class="btn-p">Open Agentis free →</a>
-      <a href="https://github.com/Dhwanil25/Agentis" target="_blank" class="btn-g">Star on GitHub ↗</a>
+      <a href="/app.html" class="btn-primary">open agentis free →</a>
+      <a href="https://github.com/Dhwanil25/Agentis" target="_blank" class="btn-secondary">star on github ↗</a>
     </div>
-    <p class="cta-meta">MIT licensed · Browser-native · Zero backend · 12 LLM providers</p>
+    <p class="cta-meta">mit licensed · browser-native · zero backend · 12 llm providers</p>
   </div>
 </section>
 
 <footer>
-  <a href="#" class="foot-logo"><img src="/favicon.png" alt="Agentis"/>Agentis</a>
+  <a href="#" class="foot-logo"><img src="/favicon.png" alt="Agentis"/>agentis</a>
   <div class="foot-links">
-    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">GitHub</a>
-    <a href="/app.html">App</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">github</a>
+    <a href="/">app</a>
   </div>
 </footer>
 
@@ -368,7 +415,7 @@ const ROLE_COLORS = {orchestrator:'#f97316',researcher:'#3b82f6',analyst:'#06b6d
 // Providers grid
 const pg = document.getElementById('prov-grid')
 PROVIDERS.forEach(p => {
-  pg.innerHTML += `<div class="prov-card"><div class="prov-dot" style="background:${p.color}"></div><div class="prov-name">${p.name}</div><div class="prov-desc">${p.desc}</div></div>`
+  pg.innerHTML += `<div class="prov-card"><div class="prov-dot" style="background:${p.color}"></div><div class="prov-name">${p.name}</div></div>`
 })
 
 // Ticker
@@ -485,7 +532,8 @@ function drawFrame(){
     ctx.fillStyle=glow;ctx.beginPath();ctx.arc(a.x,a.y,sz+16,0,Math.PI*2);ctx.fill()
 
     hexPath(a.x,a.y,sz)
-    ctx.fillStyle='#0a0a1a';ctx.fill()
+    ctx.fillStyle='#0e0e0e';ctx.fill()
+
     const strokeAlpha = a.status==='done'?'55':a.status==='working'?'ee':'44'
     ctx.strokeStyle=a.color+strokeAlpha;ctx.lineWidth=a.role==='orchestrator'?2:1.5;ctx.stroke()
 
@@ -587,7 +635,7 @@ function clearDemo(){
   running = false
   document.getElementById('status-text').textContent = 'Idle'
   document.getElementById('launch-btn').classList.remove('running')
-  document.getElementById('launch-btn').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launch'
+  document.getElementById('launch-btn').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch'
 }
 
 function launchDemo(){
@@ -599,13 +647,12 @@ function launchDemo(){
   running = true
   document.getElementById('status-text').textContent = 'Planning…'
   document.getElementById('launch-btn').classList.add('running')
-  document.getElementById('launch-btn').textContent = '● Running'
-  document.getElementById('output-body').innerHTML = '<span style="color:var(--dim)">Agents working…</span>'
+  document.getElementById('launch-btn').textContent = '● running'
+  document.getElementById('output-body').innerHTML = '<span style="color:var(--dim)">agents working…</span>'
 
   const feed = document.getElementById('feed-msgs')
   feed.innerHTML = ''
 
-  // Set agent statuses over time
   const workingAgents = [agents[6], agents[1], agents[2], agents[3], agents[4], agents[5]]
   agents[0].status = 'working'
 
@@ -623,9 +670,8 @@ function launchDemo(){
       document.getElementById('status-text').textContent='Done ✓'
       streamOutput(scenario.output)
       document.getElementById('launch-btn').classList.remove('running')
-      document.getElementById('launch-btn').innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launch'
+      document.getElementById('launch-btn').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch'
       running = false
-      // restart after 6s
       demoTimeout = setTimeout(() => {
         const tasks = Object.keys(SCENARIOS)
         const next = tasks[(tasks.indexOf(document.getElementById('task-input').value)||0+1)%tasks.length]
@@ -699,7 +745,7 @@ AGENT_ROWS_DATA.forEach(a => {
         </svg>
       </div>
       <div class="agent-info">
-        <div class="agent-name" style="text-transform:capitalize">${a.role}</div>
+        <div class="agent-name">${a.role}</div>
         <div class="agent-model">${a.model}</div>
         <div class="agent-output-preview">${a.preview}</div>
       </div>

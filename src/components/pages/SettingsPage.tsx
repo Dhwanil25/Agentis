@@ -901,7 +901,7 @@ export function SettingsPage({ apiKey, onApiKeyChange }: Props) {
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
               {[
-                { label: 'VERSION', value: '0.1.0' },
+                { label: 'VERSION', value: '0.3.0' },
                 { label: 'PLATFORM', value: 'macOS' },
                 { label: 'UPTIME', value: '--' },
                 { label: 'AGENTS', value: '0' },

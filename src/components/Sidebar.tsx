@@ -195,31 +195,29 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
   return (
     <div style={{
       width: 220, flexShrink: 0,
-      background: 'linear-gradient(180deg, rgba(12,12,22,0.98) 0%, rgba(8,8,16,0.98) 100%)',
+      background: 'var(--sidebar-bg)',
       borderRight: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
       height: '100vh', overflow: 'hidden',
       position: 'relative', zIndex: 2,
-      backdropFilter: 'blur(20px)',
     }}>
       {/* Logo block */}
       <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            background: 'var(--surface-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 16px rgba(99,102,241,0.4)',
+            border: '1px solid var(--border)',
           }}>
             <img src="/favicon.png" alt="Agentis" style={{ width: 22, height: 22, objectFit: 'contain' }} />
           </div>
           <div>
             <div style={{
-              fontSize: 13, fontWeight: 800, letterSpacing: '0.1em',
-              background: 'linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
+              color: 'var(--fg)', fontFamily: 'var(--font-mono)',
             }}>AGENTIS</div>
-            <div style={{ fontSize: 10, color: 'var(--muted)' }}>v0.2 · Multi-Agent AI</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>v0.3 · multi-agent ai</div>
           </div>
         </div>
 
@@ -227,7 +225,7 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '6px 10px', borderRadius: 8,
-          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+          background: 'var(--surface)', border: '1px solid var(--border)',
         }}>
           <span style={{
             width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
@@ -239,9 +237,10 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
             {runningCount > 0 ? `${runningCount} running` : 'No agents running'}
           </span>
           <span style={{
-            fontSize: 8.5, fontWeight: 700, color: '#6366f1',
-            background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
-            padding: '1px 6px', borderRadius: 10, letterSpacing: '0.06em',
+            fontSize: 8.5, fontWeight: 600, color: 'var(--accent)',
+            background: 'var(--accent-bg)', border: '1px solid var(--accent-border)',
+            padding: '1px 6px', borderRadius: 4, letterSpacing: '0.06em',
+            fontFamily: 'var(--font-mono)',
           }}>HTTP</span>
         </div>
       </div>
