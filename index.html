@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agentis — Multi-Agent AI Platform</title>
+<meta name="description" content="Deploy a coordinated team of AI agents across 12 LLM providers simultaneously. Watch them think, collaborate, and synthesize in real time."/>
+<link rel="icon" type="image/png" href="./favicon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0e0e; --bg2:#161616; --bg3:#1e1e1e;
+  --border:#242424; --border2:#363636;
+  --fg:#f0f0f0; --muted:#888; --dim:#555;
+  --accent:#a78bfa; --accent2:#7c3aed;
+  --green:#22c55e; --yellow:#eab308; --red:#ef4444;
+  --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ── Nav ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;border-bottom:1px solid transparent;transition:background .25s,border-color .25s}
+nav.s{background:rgba(14,14,14,.94);backdrop-filter:blur(16px);border-color:var(--border)}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--fg);font-size:14px;font-weight:700;letter-spacing:-.02em}
+.logo img{width:24px;height:24px;border-radius:6px;object-fit:contain}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s}
+.nav-links a:hover{color:var(--fg)}
+.nav-cta{padding:7px 16px;border-radius:7px;background:var(--fg);color:#0e0e0e!important;font-weight:600;font-size:13px;transition:opacity .15s}
+.nav-cta:hover{opacity:.88}
+
+/* ── Hero ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 48px 80px;text-align:center;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:100px;border:1px solid var(--border2);font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-bottom:36px}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:clamp(38px,5.5vw,76px);font-weight:700;letter-spacing:-.04em;line-height:1.05;margin-bottom:22px;text-transform:lowercase}
+.hero h1 em{font-style:normal;color:var(--muted)}
+.hero-sub{font-size:16px;line-height:1.8;color:var(--muted);max-width:520px;margin:0 auto 44px}
+.hero-actions{display:flex;align-items:center;gap:12px;margin-bottom:56px}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 26px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  color:#fff;font-size:14px;font-weight:600;text-decoration:none;
+  font-family:var(--font);letter-spacing:-.01em;
+  box-shadow:0 0 0 0 rgba(124,58,237,0);
+  transition:transform .15s,box-shadow .15s,filter .15s;
+  border:none;
+}
+.btn-primary:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.1);
+  box-shadow:0 4px 24px rgba(124,58,237,.45);
+}
+.btn-primary:active{transform:translateY(0);filter:brightness(.96)}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;border-radius:9px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.03);
+  color:var(--fg);font-size:14px;font-weight:500;text-decoration:none;
+  font-family:var(--font);letter-spacing:-.01em;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.btn-secondary:hover{
+  background:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.2);
+  transform:translateY(-1px);
+}
+.btn-secondary:active{transform:translateY(0)}
+.hero-code{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:0;overflow:hidden;width:100%;max-width:520px;text-align:left;font-family:var(--mono)}
+.code-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.code-dot{width:8px;height:8px;border-radius:50%}
+.code-body{padding:16px 18px;font-size:12.5px;line-height:2;color:#aaa}
+.code-body .c-dim{color:var(--dim)}
+.code-body .c-green{color:var(--green)}
+.code-body .c-accent{color:var(--accent)}
+.code-body .c-white{color:var(--fg)}
+.hero-stats{display:flex;align-items:center;gap:36px}
+.hstat{text-align:center}
+.hstat-val{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.hstat-label{font-size:11px;color:var(--muted);margin-top:2px;text-transform:lowercase}
+.hstat-div{width:1px;height:28px;background:var(--border)}
+
+/* ── Ticker ── */
+.ticker{padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:var(--bg2)}
+.tick-inner{display:flex;animation:tick 30s linear infinite;white-space:nowrap}
+.tick-inner:hover{animation-play-state:paused}
+.tick-item{display:inline-flex;align-items:center;gap:6px;padding:0 28px;font-size:12px;color:var(--dim);flex-shrink:0;font-family:var(--mono)}
+.tick-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── Section commons ── */
+.section{padding:100px 48px}
+.section-inner{max-width:1080px;margin:0 auto}
+.label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:16px}
+.section-h{font-size:clamp(26px,3.2vw,42px);font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-bottom:14px;text-transform:lowercase}
+.section-p{font-size:15px;line-height:1.8;color:var(--muted);max-width:500px}
+
+/* ── Demo ── */
+.demo-wrap{margin-top:52px;display:grid;grid-template-columns:1fr 320px;gap:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;height:460px}
+.demo-canvas-pane{position:relative;background:var(--bg2)}
+.demo-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
+.tb-dots{display:flex;gap:5px}
+.tb-dot{width:9px;height:9px;border-radius:50%}
+.tb-label{font-size:11.5px;color:var(--muted);font-family:var(--mono);flex:1}
+.tb-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px}
+.tb-live{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.4s ease infinite}
+#demo-canvas{width:100%;height:100%;display:block}
+.demo-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
+.side-header{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:11px 14px;border-bottom:1px solid var(--border);font-family:var(--mono)}
+.feed-msgs{flex:1;overflow-y:auto;padding:4px 0}
+.feed-msgs::-webkit-scrollbar{display:none}
+.feed-msg{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;line-height:1.5}
+.feed-from{font-weight:600;font-size:10px;margin-bottom:2px;font-family:var(--mono)}
+.feed-text{color:var(--muted)}
+.output-pane{border-top:1px solid var(--border);padding:12px 14px}
+.output-label{font-size:10px;color:var(--dim);font-family:var(--mono);margin-bottom:6px}
+#output-body{font-family:var(--mono);font-size:11px;line-height:1.7;color:rgba(240,240,255,.65);max-height:80px;overflow-y:auto}
+#output-body::-webkit-scrollbar{display:none}
+
+/* task input row */
+.demo-input-row{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
+.demo-input-row input{flex:1;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:12px;color:var(--fg)}
+.demo-input-row input::placeholder{color:var(--dim)}
+#launch-btn{padding:6px 14px;border-radius:6px;background:var(--accent2);border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;transition:opacity .15s;white-space:nowrap}
+#launch-btn:hover{opacity:.85}
+#launch-btn.running{background:#2a2a2a;cursor:default}
+.example-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.ex-task{font-size:10.5px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);color:var(--dim);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--mono)}
+.ex-task:hover{border-color:var(--border2);color:var(--fg)}
+
+/* ── Features ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:52px}
+.feat-card{background:var(--bg);padding:28px 26px;transition:background .15s}
+.feat-card:hover{background:var(--bg2)}
+.feat-icon{font-size:20px;margin-bottom:14px}
+.feat-title{font-size:14px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px;text-transform:lowercase}
+.feat-desc{font-size:13px;line-height:1.7;color:var(--muted)}
+
+/* ── How ── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;position:relative}
+.steps::before{content:'';position:absolute;top:22px;left:calc(16.6% + 22px);right:calc(16.6% + 22px);height:1px;background:var(--border2)}
+.step{padding:0 24px;text-align:center}
+.step-n{width:44px;height:44px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);margin:0 auto 20px;position:relative;z-index:1;background:var(--bg);font-family:var(--mono)}
+.step-t{font-size:15px;font-weight:600;margin-bottom:10px;letter-spacing:-.01em;text-transform:lowercase}
+.step-d{font-size:13px;line-height:1.75;color:var(--muted)}
+
+/* ── Live activity ── */
+.activity-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.stat-row{display:flex;gap:28px;margin-bottom:32px}
+.stat-pill{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px}
+.stat-pill-val{font-size:15px;font-weight:700;font-family:var(--mono)}
+.stat-pill-label{font-size:11px;color:var(--muted)}
+.agent-rows{display:flex;flex-direction:column;gap:1px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.agent-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.agent-row:last-child{border-bottom:none}
+.agent-hex svg{flex-shrink:0}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:12.5px;font-weight:600;text-transform:capitalize;letter-spacing:-.01em;margin-bottom:1px}
+.agent-model{font-size:10.5px;color:var(--dim);font-family:var(--mono)}
+.agent-output-preview{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.agent-status{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.status-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+.status-working{background:rgba(167,139,250,.12);color:var(--accent)}
+.status-done{background:rgba(34,197,94,.1);color:var(--green)}
+.status-waiting{background:rgba(255,255,255,.05);color:var(--dim)}
+.agent-tokens{font-size:10px;color:var(--dim);font-family:var(--mono)}
+
+/* ── Providers ── */
+.prov-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:40px}
+.prov-card{background:var(--bg);padding:18px 16px;display:flex;align-items:center;gap:9px;transition:background .15s}
+.prov-card:hover{background:var(--bg2)}
+.prov-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.prov-name{font-size:13px;font-weight:500}
+.prov-desc{display:none}
+
+/* ── CTA ── */
+.cta-section{padding:130px 48px;text-align:center;border-top:1px solid var(--border)}
+.cta-section h2{font-size:clamp(30px,4vw,54px);font-weight:700;letter-spacing:-.04em;line-height:1.1;margin-bottom:16px;text-transform:lowercase}
+.cta-section p{font-size:15px;color:var(--muted);margin-bottom:36px;line-height:1.75}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.cta-meta{margin-top:22px;font-size:12px;color:var(--dim);font-family:var(--mono)}
+
+/* ── Footer ── */
+footer{padding:28px 48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.foot-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--dim);font-size:13px;font-weight:600;font-family:var(--mono)}
+.foot-logo img{width:16px;height:16px;border-radius:4px;object-fit:contain;opacity:.4}
+.foot-links{display:flex;gap:20px}
+.foot-links a{font-size:12px;color:var(--dim);text-decoration:none;transition:color .15s;font-family:var(--mono)}
+.foot-links a:hover{color:var(--fg)}
+
+/* ── Fade in ── */
+.fi{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
+.fi.v{opacity:1;transform:translateY(0)}
+
+@media(max-width:1100px){.demo-wrap{grid-template-columns:1fr}.demo-side{display:none}.bench-grid{grid-template-columns:1fr}.feat-grid{grid-template-columns:repeat(2,1fr)}.prov-grid{grid-template-columns:repeat(4,1fr)}.activity-inner{grid-template-columns:1fr}}
+@media(max-width:768px){nav{padding:12px 18px}.nav-links a:not(.nav-cta){display:none}.hero{padding:100px 20px 60px}.section{padding:70px 20px}.hero h1{font-size:clamp(32px,8vw,52px)}.feat-grid{grid-template-columns:1fr}.prov-grid{grid-template-columns:repeat(3,1fr)}.steps{grid-template-columns:1fr;gap:36px}.steps::before{display:none}.hero-actions{flex-direction:column;width:100%;align-items:stretch}.hero-actions .btn-primary,.hero-actions .btn-secondary{justify-content:center}.hero-code{max-width:100%}footer{padding:20px 18px;flex-direction:column;gap:14px;text-align:center}.foot-links{flex-wrap:wrap;justify-content:center}}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="#" class="logo"><img src="./favicon.png" alt="Agentis"/>agentis</a>
+  <div class="nav-links">
+    <a href="#demo">demo</a>
+    <a href="#features">features</a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">github ↗</a>
+    <a href="https://github.com/Dhwanil25/Agentis" class="nav-cta">open app →</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge"><span class="badge-dot"></span>open source · mit license · v0.3.0</div>
+
+  <h1>deploy a team.<br/><em>not a prompt.</em></h1>
+
+  <p class="hero-sub">describe any task. agentis spawns a coordinated team of specialized agents across 12 llm providers. watch them think, collaborate, and synthesize — live.</p>
+
+  <div class="hero-code fi">
+    <div class="code-bar">
+      <div class="code-dot" style="background:#ef4444"></div>
+      <div class="code-dot" style="background:#f59e0b"></div>
+      <div class="code-dot" style="background:#22c55e"></div>
+    </div>
+    <div class="code-body">
+      <div><span class="c-dim">$</span> <span class="c-green">git clone</span> <span class="c-white">github.com/Dhwanil25/Agentis</span></div>
+      <div><span class="c-dim">$</span> <span class="c-green">npm install</span> <span class="c-dim">&amp;&amp;</span> <span class="c-green">npm run dev</span></div>
+      <div><span class="c-dim">&nbsp;</span></div>
+      <div><span class="c-accent">✓</span> <span class="c-dim">ready in 1.2s · no backend · no python · no docker</span></div>
+    </div>
+  </div>
+
+  <div class="hero-actions fi" style="transition-delay:.1s">
+    <a href="https://github.com/Dhwanil25/Agentis" class="btn-primary">open agentis free<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank" rel="noreferrer" class="btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.72-4.04-1.61-4.04-1.61-.55-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>star on github</a>
+  </div>
+
+  <div class="hero-stats fi" style="transition-delay:.2s">
+    <div class="hstat"><div class="hstat-val">12</div><div class="hstat-label">llm providers</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">8</div><div class="hstat-label">agent roles</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">0</div><div class="hstat-label">backend needed</div></div>
+    <div class="hstat-div"></div>
+    <div class="hstat"><div class="hstat-val">~2min</div><div class="hstat-label">to first run</div></div>
+  </div>
+</section>
+
+<!-- ── TICKER ── -->
+<div class="ticker">
+  <div class="tick-inner" id="ticker"></div>
+</div>
+
+<!-- ── DEMO ── -->
+<section class="section" id="demo">
+  <div class="section-inner">
+    <div class="label fi">live demo</div>
+    <h2 class="section-h fi">watch every agent think out loud.</h2>
+    <p class="section-p fi">each agent streams its output token by token. dependencies resolve automatically. upstream context flows downstream in real time.</p>
+
+    <div class="demo-wrap fi" style="transition-delay:.1s">
+      <!-- canvas pane -->
+      <div class="demo-canvas-pane" style="display:flex;flex-direction:column">
+        <div class="demo-topbar">
+          <div class="tb-dots">
+            <div class="tb-dot" style="background:#ef4444"></div>
+            <div class="tb-dot" style="background:#f59e0b"></div>
+            <div class="tb-dot" style="background:#22c55e"></div>
+          </div>
+          <span class="tb-label">agent universe</span>
+          <span class="tb-status"><span class="tb-live"></span><span id="status-text">Idle</span></span>
+        </div>
+        <div style="flex:1;position:relative">
+          <canvas id="demo-canvas"></canvas>
+        </div>
+        <div class="example-chips">
+          <button class="ex-task" onclick="setTask(this)">Analyze AI market trends</button>
+          <button class="ex-task" onclick="setTask(this)">Build a REST API spec</button>
+          <button class="ex-task" onclick="setTask(this)">Write a competitor report</button>
+          <button class="ex-task" onclick="setTask(this)">Debug this React app</button>
+        </div>
+        <div class="demo-input-row">
+          <input id="task-input" type="text" placeholder="describe a task…" value="Analyze AI market trends"/>
+          <button id="launch-btn" onclick="launchDemo()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch
+          </button>
+        </div>
+        <div class="output-pane">
+          <div class="output-label">// synthesis output</div>
+          <div id="output-body"><span style="color:var(--dim)">awaiting agents…</span></div>
+        </div>
+      </div>
+
+      <!-- side feed -->
+      <div class="demo-side">
+        <div class="side-header">agent feed</div>
+        <div class="feed-msgs" id="feed-msgs"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="label fi">features</div>
+    <h2 class="section-h fi">everything your agent team needs.</h2>
+    <p class="section-p fi">built for tasks too complex for a single prompt.</p>
+
+    <div class="feat-grid fi" style="transition-delay:.1s">
+      <div class="feat-card">
+        <div class="feat-icon">⬡</div>
+        <div class="feat-title">live agent canvas</div>
+        <div class="feat-desc">hexagonal nodes, bezier edges, animated particles, real-time thought bubbles. watch the entire execution unfold visually as it happens.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">12 providers in parallel</div>
+        <div class="feat-desc">mix anthropic, openai, google, groq, mistral, deepseek, cohere, xai, together, ollama and more in a single run. each agent gets the best model for its role.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">↻</div>
+        <div class="feat-title">auto failover</div>
+        <div class="feat-desc">when a provider goes down mid-task, agents switch to the next available one automatically. no data loss, no retries needed, no configuration required.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◈</div>
+        <div class="feat-title">persistent universe</div>
+        <div class="feat-desc">follow-up questions recall relevant old agents and add new ones. knowledge compounds across turns. your agent team builds context session over session.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⊕</div>
+        <div class="feat-title">skills marketplace</div>
+        <div class="feat-desc">install specialized skills from skills.sh and assign them to specific agent roles. one command to extend what your agents can do.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">◎</div>
+        <div class="feat-title">per-agent cost tracking</div>
+        <div class="feat-desc">every agent shows exact token counts and usd cost in real time. full analytics dashboard tracks spend across all runs and providers.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── LIVE ACTIVITY ── -->
+<section class="section" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="section-inner">
+    <div class="activity-inner">
+      <div>
+        <div class="label fi">live activity</div>
+        <h2 class="section-h fi">every agent runs in the open.</h2>
+        <p class="section-p fi" style="margin-bottom:28px">no black boxes. see exactly which model is running, what it's thinking, how many tokens it's used, and what it found.</p>
+        <div class="stat-row fi" style="transition-delay:.1s">
+          <div class="stat-pill">
+            <span class="stat-pill-val" style="color:var(--accent)" id="stat-agents">0</span>
+            <span class="stat-pill-label">agents spawned</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-pill-val" style="color:var(--green)"><span id="stat-tokens">0</span><span style="font-size:11px">k</span></span>
+            <span class="stat-pill-label">tokens streamed</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-pill-val" id="stat-runs">0</span>
+            <span class="stat-pill-label">runs completed</span>
+          </div>
+        </div>
+      </div>
+      <div class="agent-rows fi" style="transition-delay:.15s" id="agent-rows"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW ── -->
+<section class="section">
+  <div class="section-inner">
+    <div class="label fi" style="text-align:center">how it works</div>
+    <h2 class="section-h fi" style="text-align:center;max-width:480px;margin:0 auto 10px">one sentence. full agent team.</h2>
+    <p class="fi" style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:0">three phases. fully automatic. completely visible.</p>
+    <div class="steps">
+      <div class="step fi"><div class="step-n">01</div><div class="step-t">plan</div><div class="step-d">the orchestrator analyzes your task, breaks it into 2–12 sub-tasks, assigns roles and providers, and maps which agents run in parallel vs. sequentially.</div></div>
+      <div class="step fi" style="transition-delay:.1s"><div class="step-n">02</div><div class="step-t">execute</div><div class="step-d">parallel agents fire simultaneously. dependent agents receive upstream context automatically. every output streams live. failover triggers if needed.</div></div>
+      <div class="step fi" style="transition-delay:.2s"><div class="step-n">03</div><div class="step-t">synthesize</div><div class="step-d">the orchestrator merges all outputs into one cohesive answer. ask a follow-up and the universe extends — old agents recalled, new ones spawned.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROVIDERS ── -->
+<section class="section" id="providers" style="padding-top:0">
+  <div class="section-inner">
+    <div class="label fi">supported providers</div>
+    <h2 class="section-h fi">12 providers. one interface.</h2>
+    <p class="section-p fi">paste your api key and it works. no code changes, no config files.</p>
+    <div class="prov-grid fi" style="transition-delay:.1s" id="prov-grid"></div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="fi">
+    <h2>your next build starts<br/>with one sentence.</h2>
+    <p>free. open source. no account needed.<br/>bring your api key and run a full agent team in under 60 seconds.</p>
+    <div class="cta-btns">
+      <a href="https://github.com/Dhwanil25/Agentis" class="btn-primary">open agentis free<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      <a href="https://github.com/Dhwanil25/Agentis" target="_blank" rel="noreferrer" class="btn-secondary"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.72-4.04-1.61-4.04-1.61-.55-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>star on github</a>
+    </div>
+    <p class="cta-meta">mit licensed · browser-native · zero backend · 12 llm providers</p>
+  </div>
+</section>
+
+<footer>
+  <a href="#" class="foot-logo"><img src="./favicon.png" alt="Agentis"/>agentis</a>
+  <div class="foot-links">
+    <a href="https://github.com/Dhwanil25/Agentis" target="_blank">github</a>
+    <a href="/">app</a>
+  </div>
+</footer>
+
+<script>
+// ── Providers data ──────────────────────────────────────────────────────────
+const PROVIDERS = [
+  {name:'Anthropic',  color:'#f97316', desc:'Claude family'},
+  {name:'OpenAI',     color:'#10b981', desc:'GPT-4.1'},
+  {name:'Google',     color:'#4285f4', desc:'Gemini 2.5'},
+  {name:'Groq',       color:'#f43f5e', desc:'Ultra-fast'},
+  {name:'Mistral',    color:'#a855f7', desc:'Multilingual'},
+  {name:'DeepSeek',   color:'#06b6d4', desc:'Math & STEM'},
+  {name:'OpenRouter', color:'#8b5cf6', desc:'200+ models'},
+  {name:'Cohere',     color:'#eab308', desc:'RAG/Search'},
+  {name:'xAI',        color:'#e2e8f0', desc:'Real-time web'},
+  {name:'Together',   color:'#fb923c', desc:'Open source'},
+  {name:'Ollama',     color:'#64748b', desc:'Local models'},
+  {name:'LM Studio',  color:'#6366f1', desc:'Local GGUF'},
+]
+const ROLE_COLORS = {orchestrator:'#f97316',researcher:'#3b82f6',analyst:'#06b6d4',writer:'#10b981',coder:'#eab308',reviewer:'#ec4899',planner:'#8b5cf6',summarizer:'#64748b',browser:'#22d3ee'}
+
+// Providers grid
+const pg = document.getElementById('prov-grid')
+PROVIDERS.forEach(p => {
+  pg.innerHTML += `<div class="prov-card"><div class="prov-dot" style="background:${p.color}"></div><div class="prov-name">${p.name}</div></div>`
+})
+
+// Ticker
+const ti = document.getElementById('ticker')
+const tItems = PROVIDERS.map(p => `<span class="tick-item"><span class="tick-dot" style="background:${p.color}"></span>${p.name}</span>`).join('')
+ti.innerHTML = tItems + tItems
+
+// Nav scroll
+const navEl = document.getElementById('nav')
+window.addEventListener('scroll', () => navEl.classList.toggle('s', window.scrollY > 20), {passive:true})
+
+// Fade-in observer
+const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)} }), {threshold:.08})
+document.querySelectorAll('.fi').forEach(el => io.observe(el))
+
+// ── Demo Canvas ─────────────────────────────────────────────────────────────
+const dpr = window.devicePixelRatio || 1
+const cv = document.getElementById('demo-canvas')
+const ctx = cv.getContext('2d')
+
+function resizeCanvas(){
+  const wrap = cv.parentElement
+  cv.width = wrap.offsetWidth * dpr
+  cv.height = wrap.offsetHeight * dpr
+}
+resizeCanvas()
+window.addEventListener('resize', () => { resizeCanvas(); buildAgents() }, {passive:true})
+
+const ROLES_DEF = [
+  {role:'orchestrator', color:'#f97316', model:'claude-sonnet-4-6',  provider:'Anthropic'},
+  {role:'researcher',   color:'#3b82f6', model:'llama-3.3-70b',       provider:'Groq'},
+  {role:'analyst',      color:'#06b6d4', model:'gemini-2.5-pro',      provider:'Google'},
+  {role:'coder',        color:'#eab308', model:'gpt-4.1',             provider:'OpenAI'},
+  {role:'writer',       color:'#10b981', model:'claude-haiku-4-5',    provider:'Anthropic'},
+  {role:'reviewer',     color:'#ec4899', model:'mistral-large',       provider:'Mistral'},
+  {role:'planner',      color:'#8b5cf6', model:'deepseek-chat',       provider:'DeepSeek'},
+]
+const EDGES_DEF = [[0,6],[0,1],[0,2],[1,3],[2,4],[3,5],[4,5]]
+
+let agents = [], running = false, globalT = 0
+
+function buildAgents(){
+  const W = cv.width/dpr, H = cv.height/dpr
+  const cx = W/2, cy = H/2
+  agents = ROLES_DEF.map((r, i) => {
+    const isCenter = i === 0
+    const angle = (2*Math.PI*(i-1))/(ROLES_DEF.length-1) - Math.PI/2
+    const radius = isCenter ? 0 : Math.min(W,H)*0.3
+    const bx = isCenter ? cx : cx + radius*Math.cos(angle)
+    const by = isCenter ? cy : cy + radius*Math.sin(angle)
+    return {
+      ...r, bx, by, x:bx, y:by,
+      phase: Math.random()*Math.PI*2, speed: 0.4+Math.random()*0.4,
+      status: 'idle', progress: Math.random(), tokensOut: 0,
+      outputText: '', size: isCenter ? 32 : 24, pulse: 0,
+    }
+  })
+}
+buildAgents()
+
+// Particles
+const particles = EDGES_DEF.flatMap((e,_) =>
+  Array.from({length:3}, () => ({edge:e, t:Math.random(), speed:0.003+Math.random()*0.005}))
+)
+
+function hexPath(x,y,r){
+  ctx.beginPath()
+  for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6; i?ctx.lineTo(x+r*Math.cos(a),y+r*Math.sin(a)):ctx.moveTo(x+r*Math.cos(a),y+r*Math.sin(a))}
+  ctx.closePath()
+}
+
+function drawFrame(){
+  const W=cv.width/dpr, H=cv.height/dpr
+  ctx.clearRect(0,0,cv.width,cv.height)
+  ctx.save(); ctx.scale(dpr,dpr)
+
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=0.5
+  for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  // update positions
+  agents.forEach(a => {
+    a.x = a.bx + Math.sin(globalT*a.speed+a.phase)*5
+    a.y = a.by + Math.cos(globalT*a.speed*.7+a.phase)*4
+    a.pulse = (Math.sin(globalT*1.5+a.phase)+1)/2
+    if(running && a.status==='working') { a.tokensOut = Math.min(a.tokensOut+0.4,100); a.progress=(a.progress+.005)%1 }
+  })
+
+  // edges
+  EDGES_DEF.forEach(([f,t]) => {
+    const fa=agents[f], ta=agents[t]
+    const g=ctx.createLinearGradient(fa.x,fa.y,ta.x,ta.y)
+    g.addColorStop(0,fa.color+'35'); g.addColorStop(1,ta.color+'35')
+    ctx.beginPath();ctx.moveTo(fa.x,fa.y);ctx.lineTo(ta.x,ta.y)
+    ctx.strokeStyle=g;ctx.lineWidth=1;ctx.stroke()
+  })
+
+  // particles (only when running)
+  if(running) particles.forEach(p => {
+    const [f,t]=p.edge, fa=agents[f], ta=agents[t]
+    p.t=(p.t+p.speed)%1
+    const px=fa.x+(ta.x-fa.x)*p.t, py=fa.y+(ta.y-fa.y)*p.t
+    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2)
+    ctx.fillStyle=agents[p.edge[0]].color+'cc';ctx.fill()
+  })
+
+  // agents
+  agents.forEach(a => {
+    const sz = a.size
+    const glow = ctx.createRadialGradient(a.x,a.y,sz*.5,a.x,a.y,sz+16)
+    const alpha = a.status==='working'?'30':'14'
+    glow.addColorStop(0,a.color+alpha);glow.addColorStop(1,'transparent')
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(a.x,a.y,sz+16,0,Math.PI*2);ctx.fill()
+
+    hexPath(a.x,a.y,sz)
+    ctx.fillStyle='#0e0e0e';ctx.fill()
+
+    const strokeAlpha = a.status==='done'?'55':a.status==='working'?'ee':'44'
+    ctx.strokeStyle=a.color+strokeAlpha;ctx.lineWidth=a.role==='orchestrator'?2:1.5;ctx.stroke()
+
+    if(a.status==='working'){
+      ctx.beginPath();ctx.arc(a.x,a.y,sz+4,-Math.PI/2,-Math.PI/2+a.progress*Math.PI*2)
+      ctx.strokeStyle=a.color+'55';ctx.lineWidth=2;ctx.stroke()
+    }
+    if(a.status==='done'){
+      ctx.fillStyle=a.color+'cc';ctx.font='bold 11px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✓',a.x,a.y+1)
+    } else {
+      ctx.fillStyle=a.status==='working'?a.color:'rgba(255,255,255,.65)'
+      ctx.font=`${a.role==='orchestrator'?600:500} ${a.role==='orchestrator'?10:9}px Inter`
+      ctx.textAlign='center';ctx.textBaseline='middle'
+      ctx.fillText(a.role.slice(0,5),a.x,a.y)
+    }
+
+    // token bar
+    if(a.status==='working'||a.status==='done'){
+      const bw=sz*2.2,bh=3,bx2=a.x-bw/2,by2=a.y+sz+5
+      ctx.fillStyle='rgba(255,255,255,.06)';ctx.beginPath();ctx.roundRect(bx2,by2,bw,bh,2);ctx.fill()
+      const pct=a.status==='done'?1:a.tokensOut/100
+      ctx.fillStyle=a.color+(a.status==='done'?'88':'bb');ctx.beginPath();ctx.roundRect(bx2,by2,bw*pct,bh,2);ctx.fill()
+    }
+
+    // thinking dots for working agents
+    if(a.status==='working'){
+      for(let d=0;d<3;d++){
+        const da=Math.max(0,Math.sin(globalT*3+a.phase-d*.8))
+        ctx.beginPath();ctx.arc(a.x-6+d*6,a.y+sz+10,1.5,0,Math.PI*2)
+        ctx.fillStyle=a.color+Math.round(da*180).toString(16).padStart(2,'0');ctx.fill()
+      }
+    }
+  })
+
+  ctx.restore()
+  globalT+=0.016
+  requestAnimationFrame(drawFrame)
+}
+drawFrame()
+
+// ── Demo scenarios ──────────────────────────────────────────────────────────
+const SCENARIOS = {
+  'Analyze AI market trends': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Planning task: 4 agents → researcher, analyst, writer, reviewer'},
+      {from:'researcher',  color:'#3b82f6',text:'Searching: "AI market trends 2025 competitive landscape"'},
+      {from:'researcher',  color:'#3b82f6',text:'Found 8 sources. Key players: Anthropic, OpenAI, Google, Meta'},
+      {from:'analyst',     color:'#06b6d4',text:'Analyzing: market growing ~40% YoY. Claude leading in enterprise'},
+      {from:'writer',      color:'#10b981',text:'Drafting report: 5 sections, ~1200 words, executive summary first'},
+      {from:'reviewer',    color:'#ec4899',text:'Review pass: citations verified, 2 claims need strengthening'},
+      {from:'orchestrator',color:'#f97316',text:'Synthesis complete. Final report ready.'},
+    ],
+    output: 'AI Market Analysis 2025\n\nKey Finding: The AI tooling market is growing at ~40% YoY with $12B in new investment in Q1 alone. Anthropic\'s Claude models lead enterprise adoption (+68% YoY), followed by GPT-4.1 in developer tooling.\n\nTop 3 trends:\n1. Multi-agent orchestration replacing single-prompt workflows\n2. Local model adoption (Ollama +210% installs) driven by privacy needs\n3. Vertical AI tools outperforming horizontal platforms 3:1 in retention…'
+  },
+  'Build a REST API spec': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Planning: planner → coder → reviewer pipeline'},
+      {from:'planner',     color:'#8b5cf6',text:'Scoping: 6 endpoints, JWT auth, rate limiting, OpenAPI 3.0'},
+      {from:'planner',     color:'#8b5cf6',text:'Dependency graph: auth → CRUD → webhooks → docs'},
+      {from:'coder',       color:'#eab308',text:'Writing OpenAPI spec: POST /api/v1/auth/token...'},
+      {from:'coder',       color:'#eab308',text:'Endpoints: 6 routes, 14 schemas, 8 error types defined'},
+      {from:'reviewer',    color:'#ec4899',text:'Security check: missing rate-limit headers on 2 endpoints'},
+      {from:'orchestrator',color:'#f97316',text:'Spec finalized. All security issues resolved.'},
+    ],
+    output: 'REST API Specification v1.0\n\nBase URL: /api/v1\nAuth: Bearer JWT (RS256)\n\nEndpoints:\n  POST   /auth/token      — Issue access token\n  POST   /auth/refresh     — Refresh token\n  GET    /users/:id        — Get user profile\n  PATCH  /users/:id        — Update user\n  GET    /resources        — List with cursor pagination\n  POST   /resources        — Create resource\n\nRate limits: 1000 req/min authenticated, 60 req/min unauthenticated…'
+  },
+  'Write a competitor report': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Spawning: researcher + analyst + writer chain'},
+      {from:'researcher',  color:'#3b82f6',text:'Searching: "AI agent platforms comparison 2025"'},
+      {from:'researcher',  color:'#3b82f6',text:'Found: Devin, AutoGPT, CrewAI, LangGraph, Agentis profiles'},
+      {from:'analyst',     color:'#06b6d4',text:'Comparing: UX, provider support, orchestration model, pricing'},
+      {from:'analyst',     color:'#06b6d4',text:'Agentis unique: browser-native, live canvas, 12 providers, zero backend'},
+      {from:'writer',      color:'#10b981',text:'Writing 8-section competitive analysis with SWOT matrix…'},
+      {from:'orchestrator',color:'#f97316',text:'Report complete. 2,400 words, 3 charts described.'},
+    ],
+    output: 'Competitive Landscape: AI Agent Platforms\n\nExecutive Summary: Agentis differentiates through its browser-native architecture, live visualization canvas, and 12-provider support — a combination no competitor currently offers.\n\nKey differentiator table:\n• AutoGPT:  Terminal UI, single provider, no live viz\n• CrewAI:   Python library, no UI, requires backend\n• LangGraph: Framework only, no end-user interface\n• Agentis:  Browser-native, live canvas, 12 providers, zero setup…'
+  },
+  'Debug this React app': {
+    msgs: [
+      {from:'orchestrator',color:'#f97316',text:'Assigning: analyst → coder → reviewer for debug pipeline'},
+      {from:'analyst',     color:'#06b6d4',text:'Scanning for common React issues: stale closures, missing deps...'},
+      {from:'analyst',     color:'#06b6d4',text:'Found: useEffect missing dependency array, causing infinite loop'},
+      {from:'coder',       color:'#eab308',text:'Generating fix: adding [userId] to dependency array at line 47'},
+      {from:'coder',       color:'#eab308',text:'Also found: key prop missing in list render at line 83'},
+      {from:'reviewer',    color:'#ec4899',text:'Fix verified. No new issues introduced. Performance neutral.'},
+      {from:'orchestrator',color:'#f97316',text:'Debug complete. 2 issues found, 2 fixes provided.'},
+    ],
+    output: 'Debug Report\n\nIssue 1 (Critical): Infinite render loop\n  File: UserDashboard.tsx, line 47\n  Cause: useEffect with no dependency array calls setUser on every render\n  Fix: useEffect(() => { fetchUser(userId) }, [userId])\n\nIssue 2 (Warning): Missing key props\n  File: ItemList.tsx, line 83\n  Cause: .map() renders without unique key\n  Fix: Add key={item.id} to each <ListItem/>\n\nAll other patterns OK. No memory leaks detected.'
+  }
+}
+
+let demoInterval = null, demoTimeout = null, currentScenario = null
+
+function clearDemo(){
+  if(demoInterval) clearInterval(demoInterval)
+  if(demoTimeout) clearTimeout(demoTimeout)
+  agents.forEach(a => { a.status='idle'; a.tokensOut=0; a.progress=0 })
+  running = false
+  document.getElementById('status-text').textContent = 'Idle'
+  document.getElementById('launch-btn').classList.remove('running')
+  document.getElementById('launch-btn').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch'
+}
+
+function launchDemo(){
+  const task = document.getElementById('task-input').value.trim() || 'Analyze AI market trends'
+  const scenario = SCENARIOS[task] || SCENARIOS['Analyze AI market trends']
+  clearDemo()
+  currentScenario = scenario
+
+  running = true
+  document.getElementById('status-text').textContent = 'Planning…'
+  document.getElementById('launch-btn').classList.add('running')
+  document.getElementById('launch-btn').textContent = '● running'
+  document.getElementById('output-body').innerHTML = '<span style="color:var(--dim)">agents working…</span>'
+
+  const feed = document.getElementById('feed-msgs')
+  feed.innerHTML = ''
+
+  const workingAgents = [agents[6], agents[1], agents[2], agents[3], agents[4], agents[5]]
+  agents[0].status = 'working'
+
+  const phases = [
+    () => { agents[0].status='working'; document.getElementById('status-text').textContent='Planning…' },
+    () => { agents[6].status='working'; agents[1].status='working'; document.getElementById('status-text').textContent='Executing (2 parallel)' },
+    () => { agents[2].status='working' },
+    () => { agents[6].status='done'; agents[1].status='done' },
+    () => { agents[3].status='working'; agents[2].status='done' },
+    () => { agents[4].status='working' },
+    () => { agents[3].status='done'; agents[4].status='done' },
+    () => { agents[5].status='working' },
+    () => { agents[5].status='done'; agents[0].status='done'; document.getElementById('status-text').textContent='Synthesizing…' },
+    () => {
+      document.getElementById('status-text').textContent='Done ✓'
+      streamOutput(scenario.output)
+      document.getElementById('launch-btn').classList.remove('running')
+      document.getElementById('launch-btn').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> launch'
+      running = false
+      demoTimeout = setTimeout(() => {
+        const tasks = Object.keys(SCENARIOS)
+        const next = tasks[(tasks.indexOf(document.getElementById('task-input').value)||0+1)%tasks.length]
+        document.getElementById('task-input').value = next
+        launchDemo()
+      }, 8000)
+    }
+  ]
+
+  let pi = 0
+  phases[pi++]()
+  let mi = 0
+  demoInterval = setInterval(() => {
+    if(pi < phases.length) phases[pi++]()
+    if(mi < scenario.msgs.length){
+      const msg = scenario.msgs[mi++]
+      const el = document.createElement('div')
+      el.className = 'feed-msg'
+      el.innerHTML = `<div class="feed-from" style="color:${msg.color}">${msg.from}</div><div class="feed-text">${msg.text}</div>`
+      feed.appendChild(el)
+      feed.scrollTop = feed.scrollHeight
+    }
+  }, 900)
+}
+
+function streamOutput(text){
+  const el = document.getElementById('output-body')
+  el.innerHTML = ''
+  let i = 0
+  const words = text.split(' ')
+  const interval = setInterval(() => {
+    if(i >= words.length){ clearInterval(interval); return }
+    el.textContent = words.slice(0,++i).join(' ')
+    el.scrollTop = el.scrollHeight
+  }, 40)
+}
+
+function setTask(el){
+  document.getElementById('task-input').value = el.textContent
+  document.getElementById('task-input').focus()
+}
+
+// Auto-launch on load after a short delay
+setTimeout(launchDemo, 1200)
+
+// ── Live activity stats counter ─────────────────────────────────────────────
+let totalAgents=0, totalTokens=0, totalRuns=0
+function tickStats(){
+  if(running){ totalTokens+=Math.floor(Math.random()*8+4); document.getElementById('stat-tokens').innerHTML=Math.floor(totalTokens/10)+'<span>k</span>' }
+}
+setInterval(tickStats, 400)
+
+// ── Animate agent rows ───────────────────────────────────────────────────────
+const AGENT_ROWS_DATA = [
+  {role:'researcher', color:'#3b82f6', model:'llama-3.3-70b · Groq',   status:'working', preview:'Found 8 sources on AI market trends…'},
+  {role:'analyst',    color:'#06b6d4', model:'gemini-2.5-pro · Google', status:'working', preview:'Market growing 40% YoY, Claude leads…'},
+  {role:'coder',      color:'#eab308', model:'gpt-4.1 · OpenAI',        status:'waiting', preview:'Waiting for analyst output…'},
+  {role:'writer',     color:'#10b981', model:'claude-haiku-4-5 · Ant',  status:'done',    preview:'Report drafted: 1,200 words'},
+  {role:'reviewer',   color:'#ec4899', model:'mistral-large · Mistral', status:'waiting', preview:'Queued for writer output'},
+]
+const rowContainer = document.getElementById('agent-rows')
+AGENT_ROWS_DATA.forEach(a => {
+  const badge = a.status==='working'?'status-working':a.status==='done'?'status-done':'status-waiting'
+  const label = a.status==='working'?'Working':a.status==='done'?'Done':'Waiting'
+  rowContainer.innerHTML += `
+    <div class="agent-row">
+      <div class="agent-hex">
+        <svg width="32" height="32" viewBox="0 0 32 32">
+          <path d="M16 2 L28 9 L28 23 L16 30 L4 23 L4 9 Z" fill="${a.color}15" stroke="${a.color}88" stroke-width="1.5"/>
+          <text x="16" y="17" text-anchor="middle" dominant-baseline="middle" fill="${a.color}" font-size="7" font-family="Inter" font-weight="600">${a.role.slice(0,4)}</text>
+        </svg>
+      </div>
+      <div class="agent-info">
+        <div class="agent-name">${a.role}</div>
+        <div class="agent-model">${a.model}</div>
+        <div class="agent-output-preview">${a.preview}</div>
+      </div>
+      <div class="agent-status">
+        <span class="status-badge ${badge}">${label}</span>
+        <span class="agent-tokens">${Math.floor(Math.random()*800+200)} tok</span>
+      </div>
+    </div>`
+})
+
+// Update live stats
+setInterval(() => {
+  totalAgents = Math.min(totalAgents+1, 847)
+  totalRuns = Math.min(totalRuns+1, 312)
+  document.getElementById('stat-agents').textContent = totalAgents
+  document.getElementById('stat-runs').textContent = totalRuns
+}, 50)
+
+// Enter key on task input
+document.getElementById('task-input').addEventListener('keydown', e => { if(e.key==='Enter') launchDemo() })
+</script>
+</body>
+</html>
