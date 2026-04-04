@@ -126,6 +126,15 @@ const ICONS: Record<string, JSX.Element> = {
 export function Sidebar({ current, navigate, engineRunning }: Props) {
   const [agents, setAgents] = useState<Agent[]>([])
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [handsRunning, setHandsRunning] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setHandsRunning((e as CustomEvent<{ running: boolean }>).detail.running)
+    }
+    window.addEventListener('agentis_hands_status', handler)
+    return () => window.removeEventListener('agentis_hands_status', handler)
+  }, [])
 
   useEffect(() => {
     if (!engineRunning) { setAgents([]); return }
@@ -286,6 +295,14 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
                         boxShadow: '0 0 6px var(--accent)',
                       }} />
                     )}
+                    {!isActive && item.id === 'hands' && handsRunning && (
+                      <div style={{
+                        marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%',
+                        background: '#10b981',
+                        boxShadow: '0 0 6px #10b981',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                      }} />
+                    )}
                   </button>
                 )
               })}
@@ -300,6 +317,13 @@ export function Sidebar({ current, navigate, engineRunning }: Props) {
           Ctrl+K agents
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.35; }
+        }
+      `}</style>
     </div>
   )
 }

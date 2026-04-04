@@ -206,17 +206,20 @@ export async function searchSkillsDirectory(query: string): Promise<SkillEntry[]
     const res = await fetch(endpoint)
     if (!res.ok) return []
     const data = await res.json() as { skills?: SkillsShResult[] }
-    return (data.skills ?? []).map(s => ({
-      id: s.id,
-      name: formatName(s.name),
-      description: `${s.source}`,
-      category: inferCategory(s.skillId, s.source),
-      author: s.source,
-      githubRepo: s.source,
-      skillPath: s.skillId,
-      installs: formatInstalls(s.installs),
-      suggestedRoles: [],
-    }))
+    const seen = new Set<string>()
+    return (data.skills ?? [])
+      .filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true })
+      .map(s => ({
+        id: s.id,
+        name: formatName(s.name),
+        description: `${s.source}`,
+        category: inferCategory(s.skillId, s.source),
+        author: s.source,
+        githubRepo: s.source,
+        skillPath: s.skillId,
+        installs: formatInstalls(s.installs),
+        suggestedRoles: [],
+      }))
   } catch {
     return []
   }

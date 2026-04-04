@@ -9,7 +9,6 @@ interface Props {
   reset: () => void
 }
 
-type ViewMode = 'list' | 'visual'
 type RunState = 'idle' | 'input' | 'running' | 'done'
 
 function NodeCount(templateId: string): number {
@@ -18,7 +17,6 @@ function NodeCount(templateId: string): number {
 }
 
 export function WorkflowsPage({ apiKey, agentState, executeWorkflow, reset }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [runState, setRunState] = useState<RunState>('idle')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [task, setTask] = useState('')
@@ -227,36 +225,6 @@ export function WorkflowsPage({ apiKey, agentState, executeWorkflow, reset }: Pr
       <div className="of-page-header">
         <span className="of-page-title">Workflows</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-            <button
-              onClick={() => setViewMode('list')}
-              style={{
-                padding: '5px 12px',
-                fontSize: 12,
-                background: viewMode === 'list' ? 'var(--accent)' : 'transparent',
-                color: viewMode === 'list' ? '#fff' : 'var(--muted)',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-              }}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('visual')}
-              style={{
-                padding: '5px 12px',
-                fontSize: 12,
-                background: viewMode === 'visual' ? 'var(--accent)' : 'transparent',
-                color: viewMode === 'visual' ? '#fff' : 'var(--muted)',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-              }}
-            >
-              Visual Builder
-            </button>
-          </div>
         </div>
       </div>
 

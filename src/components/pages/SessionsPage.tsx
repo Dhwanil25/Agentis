@@ -9,7 +9,7 @@ interface Props {
   navigate: (page: string) => void
 }
 
-const PERSONA_IDS = ['dev', 'writer', 'analyst', 'researcher', 'browser']
+const FALLBACK_PERSONA_IDS = ['dev', 'writer', 'analyst', 'researcher', 'browser']
 
 function formatDateTime(ts: number) {
   return new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -42,11 +42,26 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
   const refreshMemories = () => { loadMemories().then(setMemories).catch(() => {}) }
 
   useEffect(() => {
-    refreshMemories()
+    loadMemories().then(loaded => {
+      setMemories(loaded)
+      // Auto-select the first agent that actually has memories
+      if (loaded.length > 0) {
+        const firstWithMemory = loaded[0].agentId
+        setSelectedAgent(firstWithMemory)
+      }
+    }).catch(() => {})
     const handler = () => refreshMemories()
     window.addEventListener('agentis_memory_update', handler)
     return () => window.removeEventListener('agentis_memory_update', handler)
   }, [])
+
+  // All unique agentIds that actually have memories, plus fallback personas for adding new entries
+  const allAgentIds = [
+    ...new Set([
+      ...memories.map(m => m.agentId),
+      ...FALLBACK_PERSONA_IDS,
+    ]),
+  ]
 
   const agentMemories = memories.filter(m => m.agentId === selectedAgent)
 
@@ -59,10 +74,6 @@ export function SessionsPage({ engineRunning, navigate }: Props) {
   }
 
   const sessions = [...history].reverse()
-
-  // All personas that have memory
-  const agentsWithMemory = PERSONA_IDS.filter(id => memories.some(m => m.agentId === id))
-  const allAgentIds = [...new Set([...agentsWithMemory, ...PERSONA_IDS])]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

@@ -12,7 +12,10 @@ import { testProviderKey, testTavilyKey, type TestResult } from '@/lib/testProvi
 import { loadSessions, saveSession, deleteSession, type ChatSession } from '@/lib/chatHistory'
 import { addUsageRecord, calculateCost } from '@/lib/analytics'
 
-interface Props { apiKey: string }
+interface Props {
+  apiKey: string
+  initialRoles?: import('@/lib/multiAgentEngine').AgentRole[]
+}
 
 // ── Phase badge ────────────────────────────────────────────────────────────────
 const PHASE_META: Record<string, { label: string; color: string }> = {
@@ -198,6 +201,8 @@ interface RightPanelProps {
   agents: MAAgent[]; finalOutput: string; errorMsg: string | null
   task: string; setTask: (v: string) => void
   running: boolean; hasAnyKey: boolean
+  initialRoles?: import('@/lib/multiAgentEngine').AgentRole[]
+  onClearRoles?: () => void
   selectedId: string | null; setSelectedId: (id: string | null) => void
   followUp: string; setFollowUp: (v: string) => void
   savedToMemory: boolean; copiedOutput: boolean
@@ -206,6 +211,10 @@ interface RightPanelProps {
   activeProviders: LLMProvider[]
   messages: ChatMsg[]
   browserEnabled: boolean; onToggleBrowser: () => void
+  // Persistent mode (Feature 3)
+  persistentMode: boolean; onTogglePersistent: () => void
+  persistentMaxRetries: number; onSetPersistentMaxRetries: (v: number) => void
+  persistentCriteria: string; onSetPersistentCriteria: (v: string) => void
   onLaunch: () => void; onFollowUp: (q: string) => void
   onSaveMemory: () => void; onCopyOutput: () => void
   onExportMd: () => void; onExportTxt: () => void; onDeepDive: () => void
@@ -219,9 +228,13 @@ interface RightPanelProps {
 function RightPanel({
   phase, agents, finalOutput, errorMsg,
   task, setTask, running, hasAnyKey,
+  initialRoles, onClearRoles,
   selectedId, setSelectedId, followUp, setFollowUp,
   savedToMemory, copiedOutput, providerKeys, providersOpen, setProvidersOpen,
-  activeProviders, messages, browserEnabled, onToggleBrowser, onLaunch, onFollowUp, onSaveMemory, onCopyOutput,
+  activeProviders, messages, browserEnabled, onToggleBrowser,
+  persistentMode, onTogglePersistent, persistentMaxRetries, onSetPersistentMaxRetries,
+  persistentCriteria, onSetPersistentCriteria,
+  onLaunch, onFollowUp, onSaveMemory, onCopyOutput,
   onExportMd, onExportTxt, onDeepDive, updateProviderKey, onTestKey, testStatus, tavilyTestStatus, onTestTavily,
 }: RightPanelProps) {
   const [tab, setTab] = useState<'team' | 'output'>('team')
@@ -422,6 +435,40 @@ function RightPanel({
             outline: 'none',
           }}
         />
+        {/* Skill-configured role hint */}
+        {initialRoles && initialRoles.length > 0 && phase === 'idle' && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8,
+            padding: '6px 8px', borderRadius: 6,
+            background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+            alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 10, color: 'rgba(165,180,252,0.7)', marginRight: 4, lineHeight: '20px', flexShrink: 0 }}>
+              Team:
+            </span>
+            {initialRoles.map(role => (
+              <span key={role} style={{
+                fontSize: 10, padding: '2px 8px', borderRadius: 12,
+                background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+                color: '#a5b4fc', fontWeight: 500,
+              }}>
+                {role}
+              </span>
+            ))}
+            <button
+              onClick={onClearRoles}
+              title="Use regular Universe (no team preset)"
+              style={{
+                marginLeft: 'auto', background: 'none', border: 'none',
+                color: 'rgba(165,180,252,0.5)', cursor: 'pointer',
+                fontSize: 14, lineHeight: 1, padding: '0 2px',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
         {/* Browser toggle */}
         <button
           onClick={onToggleBrowser}
@@ -453,6 +500,72 @@ function RightPanel({
             {browserEnabled ? 'on' : 'off'}
           </span>
         </button>
+
+        {/* Persistent mode toggle (Feature 3) */}
+        <button
+          onClick={onTogglePersistent}
+          disabled={running}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', marginBottom: 8, padding: '7px 10px',
+            background: persistentMode ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${persistentMode ? 'rgba(139,92,246,0.35)' : 'var(--border)'}`,
+            borderRadius: 7, cursor: running ? 'not-allowed' : 'pointer',
+            transition: 'background 0.15s, border-color 0.15s',
+          }}
+        >
+          <div style={{
+            width: 28, height: 16, borderRadius: 8, flexShrink: 0,
+            background: persistentMode ? '#8b5cf6' : 'rgba(255,255,255,0.12)',
+            position: 'relative', transition: 'background 0.2s',
+          }}>
+            <div style={{
+              position: 'absolute', top: 2, left: persistentMode ? 14 : 2,
+              width: 12, height: 12, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s',
+            }} />
+          </div>
+          <span style={{ fontSize: 11, color: persistentMode ? '#a78bfa' : 'var(--muted)', fontWeight: 600 }}>
+            Persistent Mode
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 'auto' }}>
+            {persistentMode ? 'on' : 'off'}
+          </span>
+        </button>
+
+        {/* Persistent mode config (only shown when enabled) */}
+        {persistentMode && (
+          <div style={{
+            padding: '8px 10px', marginBottom: 8, borderRadius: 7,
+            background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)',
+            display: 'flex', flexDirection: 'column', gap: 7,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600 }}>Max retries</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[1, 2, 3, 5].map(n => (
+                  <button key={n} onClick={() => onSetPersistentMaxRetries(n)} disabled={running} style={{
+                    fontSize: 10, padding: '2px 7px', borderRadius: 4,
+                    background: persistentMaxRetries === n ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${persistentMaxRetries === n ? 'rgba(139,92,246,0.6)' : 'var(--border)'}`,
+                    color: persistentMaxRetries === n ? '#a78bfa' : 'var(--muted)',
+                    cursor: running ? 'not-allowed' : 'pointer', fontWeight: persistentMaxRetries === n ? 700 : 400,
+                  }}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: '#a78bfa', fontWeight: 600, marginBottom: 3 }}>Acceptance criteria (optional)</div>
+              <input
+                placeholder="e.g. Must include code examples and performance benchmarks"
+                value={persistentCriteria}
+                onChange={e => onSetPersistentCriteria(e.target.value)}
+                disabled={running}
+                style={{ width: '100%', fontSize: 10, padding: '4px 7px', borderRadius: 5 }}
+              />
+            </div>
+          </div>
+        )}
 
         <button
           className="btn-launch"
@@ -817,9 +930,10 @@ function RightPanel({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function UniversePage({ apiKey }: Props) {
+export function UniversePage({ apiKey, initialRoles: initialRolesProp }: Props) {
   const [maState, setMaState] = useState<MAState>(INITIAL_MA_STATE)
   const [task, setTask] = useState('')
+  const [activeRoles, setActiveRoles] = useState(initialRolesProp)
   const [running, setRunning] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'3d' | 'flow'>('flow')
@@ -835,6 +949,10 @@ export function UniversePage({ apiKey }: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [browserEnabled, setBrowserEnabled] = useState(false)
   const [tavilyTestStatus, setTavilyTestStatus] = useState<TestResult>('idle')
+  // Persistent mode (Feature 3)
+  const [persistentMode, setPersistentMode] = useState(false)
+  const [persistentMaxRetries, setPersistentMaxRetries] = useState(3)
+  const [persistentCriteria, setPersistentCriteria] = useState('')
 
 
   // Sync apiKey prop → Settings localStorage if not already set
@@ -956,7 +1074,11 @@ export function UniversePage({ apiKey }: Props) {
     setActiveSessionId(session.id)
     setSessions(loadSessions())
     try {
-      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, trackState, browserEnabled)
+      await runMultiAgentTask(taskToRun.trim(), providerKeys, { w: 800, h: 600 }, trackState, {
+        browserEnabled,
+        persistentMode: persistentMode ? { maxRetries: persistentMaxRetries, acceptanceCriteria: persistentCriteria || undefined } : undefined,
+        suggestedRoles: activeRoles,
+      })
     } finally {
       setRunning(false)
     }
@@ -1117,6 +1239,8 @@ export function UniversePage({ apiKey }: Props) {
           setTask={setTask}
           running={running}
           hasAnyKey={hasAnyKey}
+          initialRoles={activeRoles}
+          onClearRoles={() => setActiveRoles(undefined)}
           selectedId={selectedId}
           setSelectedId={setSelectedId}
           followUp={followUp}
@@ -1130,6 +1254,12 @@ export function UniversePage({ apiKey }: Props) {
           messages={messages}
           browserEnabled={browserEnabled}
           onToggleBrowser={() => setBrowserEnabled(v => !v)}
+          persistentMode={persistentMode}
+          onTogglePersistent={() => setPersistentMode(v => !v)}
+          persistentMaxRetries={persistentMaxRetries}
+          onSetPersistentMaxRetries={setPersistentMaxRetries}
+          persistentCriteria={persistentCriteria}
+          onSetPersistentCriteria={setPersistentCriteria}
           onLaunch={handleLaunch}
           onFollowUp={handleFollowUp}
           onSaveMemory={() => {

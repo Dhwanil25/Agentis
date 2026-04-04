@@ -923,6 +923,11 @@ function BrowserAgentPanel({ apiKey, ptInfo, onConfigToken, repoll }: {
   const [showScreenshot,  setShowScreenshot]  = useState(true)
   const traceRef = useRef<HTMLDivElement>(null)
 
+  // Broadcast run status so the Sidebar can show a live indicator
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('agentis_hands_status', { detail: { running: run?.status === 'running' } }))
+  }, [run?.status])
+
   useEffect(() => {
     if (traceRef.current) {
       traceRef.current.scrollTop = traceRef.current.scrollHeight
