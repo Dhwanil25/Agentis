@@ -83,7 +83,7 @@ nav.s{background:rgba(14,14,14,.94);backdrop-filter:blur(16px);border-color:var(
 .tb-label{font-size:11.5px;color:var(--muted);font-family:var(--mono);flex:1}
 .tb-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px}
 .tb-live{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.4s ease infinite}
-#demo-canvas{width:100%;height:100%;display:block}
+#demo-canvas{width:100%;height:100%;position:relative;overflow:hidden}
 .demo-side{border-left:1px solid var(--border);display:flex;flex-direction:column}
 .side-header{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:11px 14px;border-bottom:1px solid var(--border);font-family:var(--mono)}
 .feed-msgs{flex:1;overflow-y:auto;padding:4px 0}
@@ -250,7 +250,7 @@ footer{padding:28px 48px;border-top:1px solid var(--border);display:flex;align-i
           <span class="tb-status"><span class="tb-live"></span><span id="status-text">Idle</span></span>
         </div>
         <div style="flex:1;position:relative">
-          <canvas id="demo-canvas"></canvas>
+          <div id="demo-canvas"></div>
         </div>
         <div class="example-chips">
           <button class="ex-task" onclick="setTask(this)">Analyze AI market trends</button>
@@ -432,18 +432,7 @@ const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting)
 document.querySelectorAll('.fi').forEach(el => io.observe(el))
 
 // ── Demo Canvas ─────────────────────────────────────────────────────────────
-const dpr = window.devicePixelRatio || 1
-const cv = document.getElementById('demo-canvas')
-const ctx = cv.getContext('2d')
-
-function resizeCanvas(){
-  const wrap = cv.parentElement
-  cv.width = wrap.offsetWidth * dpr
-  cv.height = wrap.offsetHeight * dpr
-}
-resizeCanvas()
-window.addEventListener('resize', () => { resizeCanvas(); buildAgents() }, {passive:true})
-
+// ── Three.js 3D Demo ──────────────────────────────────────────────────────────
 const ROLES_DEF = [
   {role:'orchestrator', color:'#f97316', model:'claude-sonnet-4-6',  provider:'Anthropic'},
   {role:'researcher',   color:'#3b82f6', model:'llama-3.3-70b',       provider:'Groq'},
@@ -455,124 +444,182 @@ const ROLES_DEF = [
 ]
 const EDGES_DEF = [[0,6],[0,1],[0,2],[1,3],[2,4],[3,5],[4,5]]
 
-let agents = [], running = false, globalT = 0
+let agents = [], running = false
 
 function buildAgents(){
-  const W = cv.width/dpr, H = cv.height/dpr
-  const cx = W/2, cy = H/2
-  agents = ROLES_DEF.map((r, i) => {
-    const isCenter = i === 0
-    const angle = (2*Math.PI*(i-1))/(ROLES_DEF.length-1) - Math.PI/2
-    const radius = isCenter ? 0 : Math.min(W,H)*0.3
-    const bx = isCenter ? cx : cx + radius*Math.cos(angle)
-    const by = isCenter ? cy : cy + radius*Math.sin(angle)
-    return {
-      ...r, bx, by, x:bx, y:by,
-      phase: Math.random()*Math.PI*2, speed: 0.4+Math.random()*0.4,
-      status: 'idle', progress: Math.random(), tokensOut: 0,
-      outputText: '', size: isCenter ? 32 : 24, pulse: 0,
-    }
-  })
+  agents = ROLES_DEF.map((r) => ({
+    ...r, phase: Math.random()*Math.PI*2,
+    status:'idle', progress:0, tokensOut:0, outputText:'',
+  }))
 }
 buildAgents()
+window.addEventListener('resize', buildAgents, {passive:true})
 
-// Particles
-const particles = EDGES_DEF.flatMap((e,_) =>
-  Array.from({length:3}, () => ({edge:e, t:Math.random(), speed:0.003+Math.random()*0.005}))
-)
+// Init Three.js after layout is ready
+requestAnimationFrame(function init3d(){
+  const container3d = document.getElementById('demo-canvas')
+  if(!container3d || typeof THREE === 'undefined') { requestAnimationFrame(init3d); return }
+  const W = container3d.offsetWidth || 560
+  const H = container3d.offsetHeight || 380
 
-function hexPath(x,y,r){
-  ctx.beginPath()
-  for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6; i?ctx.lineTo(x+r*Math.cos(a),y+r*Math.sin(a)):ctx.moveTo(x+r*Math.cos(a),y+r*Math.sin(a))}
-  ctx.closePath()
-}
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({antialias:true})
+  renderer.setSize(W, H)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setClearColor(0x0e0e0e, 1)
+  renderer.domElement.style.cssText = 'width:100%;height:100%;display:block'
+  container3d.appendChild(renderer.domElement)
 
-function drawFrame(){
-  const W=cv.width/dpr, H=cv.height/dpr
-  ctx.clearRect(0,0,cv.width,cv.height)
-  ctx.save(); ctx.scale(dpr,dpr)
+  // Scene + camera
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(50, W/H, 0.1, 100)
+  camera.position.set(0.5, 1.2, 5.8)
+  camera.lookAt(0, 0, 0)
 
-  // grid
-  ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=0.5
-  for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
-  for(let y=0;y<H;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4))
+  const plight = new THREE.PointLight(0xa78bfa, 1.5, 20)
+  plight.position.set(0, 2, 3)
+  scene.add(plight)
 
-  // update positions
-  agents.forEach(a => {
-    a.x = a.bx + Math.sin(globalT*a.speed+a.phase)*5
-    a.y = a.by + Math.cos(globalT*a.speed*.7+a.phase)*4
-    a.pulse = (Math.sin(globalT*1.5+a.phase)+1)/2
-    if(running && a.status==='working') { a.tokensOut = Math.min(a.tokensOut+0.4,100); a.progress=(a.progress+.005)%1 }
+  // Group for rotation
+  const group = new THREE.Group()
+  scene.add(group)
+
+  // 3D positions
+  const POS3D = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(2.4, 0.5, 0.3),
+    new THREE.Vector3(0.8, -0.7, 2.1),
+    new THREE.Vector3(-2.0, 0.5, 1.0),
+    new THREE.Vector3(-2.2, -0.3, -0.8),
+    new THREE.Vector3(-0.4, 0.9, -2.1),
+    new THREE.Vector3(1.7, -0.6, -1.5),
+  ]
+
+  // Parse colors
+  const nodeColors = ROLES_DEF.map(r => new THREE.Color(r.color))
+
+  // Build nodes (core sphere + glow halo)
+  const nodeMeshes = ROLES_DEF.map((r, i) => {
+    const isCenter = i === 0
+    const size = isCenter ? 0.28 : 0.18
+    const col = nodeColors[i]
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(size, 32, 32),
+      new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.3, roughness:0.2, metalness:0.7})
+    )
+    core.position.copy(POS3D[i])
+    group.add(core)
+
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(size * 3, 16, 16),
+      new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:isCenter?0.07:0.04, depthWrite:false})
+    )
+    glow.position.copy(POS3D[i])
+    group.add(glow)
+
+    return {core, glow}
   })
 
-  // edges
-  EDGES_DEF.forEach(([f,t]) => {
-    const fa=agents[f], ta=agents[t]
-    const g=ctx.createLinearGradient(fa.x,fa.y,ta.x,ta.y)
-    g.addColorStop(0,fa.color+'35'); g.addColorStop(1,ta.color+'35')
-    ctx.beginPath();ctx.moveTo(fa.x,fa.y);ctx.lineTo(ta.x,ta.y)
-    ctx.strokeStyle=g;ctx.lineWidth=1;ctx.stroke()
+  // Build edges
+  const edgeLines = EDGES_DEF.map(([f, t]) => {
+    const pts = [POS3D[f].clone(), POS3D[t].clone()]
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:nodeColors[f], transparent:true, opacity:0.2})
+    )
+    group.add(line)
+    return line
   })
 
-  // particles (only when running)
-  if(running) particles.forEach(p => {
-    const [f,t]=p.edge, fa=agents[f], ta=agents[t]
-    p.t=(p.t+p.speed)%1
-    const px=fa.x+(ta.x-fa.x)*p.t, py=fa.y+(ta.y-fa.y)*p.t
-    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2)
-    ctx.fillStyle=agents[p.edge[0]].color+'cc';ctx.fill()
+  // Particles
+  const particles3d = EDGES_DEF.flatMap(([f, t]) =>
+    Array.from({length:3}, () => {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.038, 8, 8),
+        new THREE.MeshBasicMaterial({color:nodeColors[f], transparent:true, opacity:0.9})
+      )
+      m.visible = false
+      group.add(m)
+      return {mesh:m, from:POS3D[f], to:POS3D[t], t:Math.random(), speed:0.004+Math.random()*0.006}
+    })
+  )
+
+  // HTML label overlay
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden'
+  container3d.appendChild(overlay)
+
+  const labelEls = ROLES_DEF.map((r, i) => {
+    const el = document.createElement('div')
+    el.textContent = r.role.slice(0,5)
+    el.style.cssText = `position:absolute;font-family:var(--mono);font-size:9px;font-weight:700;color:${r.color};text-transform:uppercase;letter-spacing:.06em;transform:translate(-50%,-50%);white-space:nowrap;text-shadow:0 0 8px ${r.color}88`
+    overlay.appendChild(el)
+    return el
   })
 
-  // agents
-  agents.forEach(a => {
-    const sz = a.size
-    const glow = ctx.createRadialGradient(a.x,a.y,sz*.5,a.x,a.y,sz+16)
-    const alpha = a.status==='working'?'30':'14'
-    glow.addColorStop(0,a.color+alpha);glow.addColorStop(1,'transparent')
-    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(a.x,a.y,sz+16,0,Math.PI*2);ctx.fill()
+  // Resize
+  window.addEventListener('resize', () => {
+    const W = container3d.offsetWidth, H = container3d.offsetHeight
+    renderer.setSize(W, H)
+    camera.aspect = W/H
+    camera.updateProjectionMatrix()
+  }, {passive:true})
 
-    hexPath(a.x,a.y,sz)
-    ctx.fillStyle='#0e0e0e';ctx.fill()
+  // Animate
+  let t3d = 0
+  ;(function loop(){
+    requestAnimationFrame(loop)
+    t3d += 0.016
 
-    const strokeAlpha = a.status==='done'?'55':a.status==='working'?'ee':'44'
-    ctx.strokeStyle=a.color+strokeAlpha;ctx.lineWidth=a.role==='orchestrator'?2:1.5;ctx.stroke()
+    group.rotation.y += 0.0022
+    group.rotation.x = Math.sin(t3d * 0.07) * 0.1
 
-    if(a.status==='working'){
-      ctx.beginPath();ctx.arc(a.x,a.y,sz+4,-Math.PI/2,-Math.PI/2+a.progress*Math.PI*2)
-      ctx.strokeStyle=a.color+'55';ctx.lineWidth=2;ctx.stroke()
-    }
-    if(a.status==='done'){
-      ctx.fillStyle=a.color+'cc';ctx.font='bold 11px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✓',a.x,a.y+1)
-    } else {
-      ctx.fillStyle=a.status==='working'?a.color:'rgba(255,255,255,.65)'
-      ctx.font=`${a.role==='orchestrator'?600:500} ${a.role==='orchestrator'?10:9}px Inter`
-      ctx.textAlign='center';ctx.textBaseline='middle'
-      ctx.fillText(a.role.slice(0,5),a.x,a.y)
-    }
-
-    // token bar
-    if(a.status==='working'||a.status==='done'){
-      const bw=sz*2.2,bh=3,bx2=a.x-bw/2,by2=a.y+sz+5
-      ctx.fillStyle='rgba(255,255,255,.06)';ctx.beginPath();ctx.roundRect(bx2,by2,bw,bh,2);ctx.fill()
-      const pct=a.status==='done'?1:a.tokensOut/100
-      ctx.fillStyle=a.color+(a.status==='done'?'88':'bb');ctx.beginPath();ctx.roundRect(bx2,by2,bw*pct,bh,2);ctx.fill()
-    }
-
-    // thinking dots for working agents
-    if(a.status==='working'){
-      for(let d=0;d<3;d++){
-        const da=Math.max(0,Math.sin(globalT*3+a.phase-d*.8))
-        ctx.beginPath();ctx.arc(a.x-6+d*6,a.y+sz+10,1.5,0,Math.PI*2)
-        ctx.fillStyle=a.color+Math.round(da*180).toString(16).padStart(2,'0');ctx.fill()
+    // Node glow by status
+    ROLES_DEF.forEach((_, i) => {
+      const ag = agents[i]
+      if(!ag) return
+      const {core, glow} = nodeMeshes[i]
+      if(ag.status === 'working'){
+        const p = (Math.sin(t3d * 3.5 + i * 1.3) + 1) / 2
+        core.material.emissiveIntensity = 0.4 + p * 1.1
+        glow.material.opacity = 0.08 + p * 0.16
+        glow.scale.setScalar(1 + p * 0.4)
+      } else if(ag.status === 'done'){
+        core.material.emissiveIntensity = 1.1
+        glow.material.opacity = 0.2
+        glow.scale.setScalar(1.4)
+      } else {
+        core.material.emissiveIntensity = 0.2
+        glow.material.opacity = i===0 ? 0.06 : 0.03
+        glow.scale.setScalar(1)
       }
-    }
-  })
+    })
 
-  ctx.restore()
-  globalT+=0.016
-  requestAnimationFrame(drawFrame)
-}
-drawFrame()
+    // Edge opacity
+    edgeLines.forEach(l => { l.material.opacity = running ? 0.35 : 0.18 })
+
+    // Particles
+    particles3d.forEach(p => {
+      if(running) p.t = (p.t + p.speed) % 1
+      p.mesh.position.lerpVectors(p.from, p.to, p.t)
+      p.mesh.visible = running
+    })
+
+    // Labels: project 3D → 2D
+    const cW = container3d.offsetWidth, cH = container3d.offsetHeight
+    nodeMeshes.forEach(({core}, i) => {
+      const pos = core.position.clone().applyMatrix4(group.matrixWorld)
+      pos.project(camera)
+      labelEls[i].style.left = ((pos.x * 0.5 + 0.5) * cW) + 'px'
+      labelEls[i].style.top  = ((-pos.y * 0.5 + 0.5) * cH + 20) + 'px'
+    })
+
+    renderer.render(scene, camera)
+  })()
+})
 
 // ── Demo scenarios ──────────────────────────────────────────────────────────
 const SCENARIOS = {
@@ -767,5 +814,6 @@ setInterval(() => {
 // Enter key on task input
 document.getElementById('task-input').addEventListener('keydown', e => { if(e.key==='Enter') launchDemo() })
 </script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 </body>
 </html>

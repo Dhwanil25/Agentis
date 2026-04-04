@@ -32,6 +32,7 @@ export default function App() {
     return !!(import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem('agentis_apikey'))
   })
   const [page, setPage] = useState<Page>('overview')
+  const [universeInitialRoles, setUniverseInitialRoles] = useState<import('@/lib/multiAgentEngine').AgentRole[] | undefined>(undefined)
   const [engineRunning, setEngineRunning] = useState(false)
 
   // Poll engine status
@@ -84,7 +85,9 @@ export default function App() {
     })
   }, [agentState.step]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const navigate = (p: string) => {
+  const navigate = (p: string, opts?: { initialRoles?: import('@/lib/multiAgentEngine').AgentRole[] }) => {
+    if (p === 'universe') setUniverseInitialRoles(opts?.initialRoles)
+    else if (opts?.initialRoles !== undefined) setUniverseInitialRoles(opts.initialRoles)
     setPage(p as Page)
     // Reset chat state when navigating away from chat
     if (p !== 'chat') reset()
@@ -219,22 +222,26 @@ export default function App() {
           />
         )}
 
-        {page === 'scheduler' && (
+        {/* Always mounted so scheduled jobs fire even when not on this page */}
+        <div style={{ display: page === 'scheduler' ? 'flex' : 'none', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden' }}>
           <SchedulerPage
             execute={execute}
             navigate={navigate}
             reset={reset}
             agentRunning={agentState.loading}
           />
-        )}
+        </div>
 
         {page === 'channels' && <ChannelsPage />}
 
-        {page === 'skills' && <SkillsPage />}
+        {page === 'skills' && <SkillsPage navigate={navigate} apiKey={apiKey} />}
 
-        {page === 'hands' && <HandsPage apiKey={apiKey} />}
+        {/* Always mounted so running tasks survive navigation */}
+        <div style={{ display: page === 'hands' ? 'flex' : 'none', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden' }}>
+          <HandsPage apiKey={apiKey} />
+        </div>
 
-        {page === 'universe' && <UniversePage apiKey={apiKey} />}
+        {page === 'universe' && <UniversePage apiKey={apiKey} initialRoles={universeInitialRoles} />}
 
         {page === 'settings' && (
           <SettingsPage

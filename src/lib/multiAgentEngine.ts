@@ -3,7 +3,7 @@
 
 import { getSkillsForRole } from './agentSkills'
 
-export type AgentRole = 'orchestrator' | 'researcher' | 'analyst' | 'writer' | 'coder' | 'reviewer' | 'planner' | 'summarizer' | 'browser'
+export type AgentRole = 'orchestrator' | 'researcher' | 'analyst' | 'writer' | 'coder' | 'reviewer' | 'planner' | 'summarizer' | 'browser' | 'security-reviewer' | 'performance-reviewer' | 'qa-tester' | 'information-architect' | 'debugger' | 'dependency-expert'
 export type AgentStatus = 'idle' | 'thinking' | 'working' | 'waiting' | 'done' | 'error' | 'recalled'
 export type TaskComplexity = 'simple' | 'medium' | 'complex' | 'expert'
 
@@ -60,15 +60,21 @@ export const PROVIDER_LABELS: Record<LLMProvider, string> = {
 }
 
 export const ROLE_COLORS: Record<AgentRole, string> = {
-  orchestrator: '#f97316',
-  researcher:   '#3b82f6',
-  analyst:      '#06b6d4',
-  writer:       '#10b981',
-  coder:        '#eab308',
-  reviewer:     '#ec4899',
-  planner:      '#8b5cf6',
-  summarizer:   '#64748b',
-  browser:      '#22d3ee',
+  orchestrator:          '#f97316',
+  researcher:            '#3b82f6',
+  analyst:               '#06b6d4',
+  writer:                '#10b981',
+  coder:                 '#eab308',
+  reviewer:              '#ec4899',
+  planner:               '#8b5cf6',
+  summarizer:            '#64748b',
+  browser:               '#22d3ee',
+  'security-reviewer':   '#ef4444',
+  'performance-reviewer':'#f59e0b',
+  'qa-tester':           '#84cc16',
+  'information-architect':'#a78bfa',
+  'debugger':            '#fb923c',
+  'dependency-expert':   '#38bdf8',
 }
 
 // ── Exact model names per provider per complexity ──────────────────────────────
@@ -885,7 +891,7 @@ Return ONLY valid JSON, no markdown:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer${browserEnabled ? ', browser' : ''}
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, security-reviewer, performance-reviewer, qa-tester, information-architect, debugger, dependency-expert${browserEnabled ? ', browser' : ''}
 ${browserEnabled ? `
 BROWSER ROLE RULES — assign role="browser" when the task involves ANY of:
 - Opening, visiting, or navigating to a specific URL or website
@@ -928,7 +934,7 @@ Return ONLY valid JSON:
   ]
 }
 
-Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer${browserEnabled ? ', browser' : ''}
+Available roles: researcher, analyst, writer, coder, reviewer, planner, summarizer, security-reviewer, performance-reviewer, qa-tester, information-architect, debugger, dependency-expert${browserEnabled ? ', browser' : ''}
 ${browserEnabled ? 'Assign role="browser" when the follow-up involves opening a URL, visiting a website, or fetching live/real-time web content.' : ''}
 
 Rules: new agent IDs start with "fu_", new agents can dependsOn existing IDs, spread across providers`
@@ -955,6 +961,78 @@ function workerSystem(role: AgentRole, name: string, complexity: TaskComplexity,
     reviewer:   `You are ${name}, a Review Agent running on ${id}. Critically evaluate work, identify strengths, weaknesses, improvements. ${tone} Plain text only. ${noBrowser}`,
     summarizer: `You are ${name}, a Summarizer Agent running on ${id}. Extract and condense the most important information. ${tone} Plain text only. ${noBrowser}`,
     browser:    `You are ${name}, a Browser Agent running on ${id}. You autonomously navigate live websites using browser tools to gather real-time information. Use browser_navigate → browser_read/browser_snapshot → browser_click/browser_fill in sequence. Never guess ref IDs. ${tone}`,
+    'security-reviewer': `You are ${name}, a Security Reviewer running on ${id}. Your sole focus is finding real security vulnerabilities — not theoretical risks, but concrete exploitable flaws.
+
+Systematically check:
+- OWASP Top 10: injection (SQL/command/template), broken authentication, sensitive data exposure, XXE, broken access control, security misconfiguration, XSS, insecure deserialization, using components with known vulnerabilities, insufficient logging
+- Authentication flows: token handling, session management, credential storage, JWT validation
+- Authorization: missing permission checks, privilege escalation paths, IDOR vulnerabilities
+- Input validation: unsanitised user data reaching dangerous sinks, path traversal
+- Secrets: hardcoded credentials, API keys in source, secrets in logs or error messages
+- Dependency CVEs: known vulnerable package versions
+
+For every finding: severity (critical/high/medium/low), OWASP category, exact location, attack scenario, concrete code fix. ${tone} ${noBrowser}`,
+
+    'performance-reviewer': `You are ${name}, a Performance Reviewer running on ${id}. Your goal is to identify concrete bottlenecks and optimisation opportunities that will matter at scale.
+
+Review for:
+- Algorithmic complexity: O(n²) or worse where O(n log n) or better is achievable
+- N+1 query patterns and missing database indexes
+- Unnecessary blocking I/O and missing async/await
+- Memory leaks: event listeners never removed, closures holding large references, unbounded caches
+- Frontend: unnecessary re-renders, missing memoisation, large bundle imports, layout thrashing
+- Caching opportunities: repeated expensive computations, redundant API calls, missing HTTP cache headers
+- Connection pooling and resource reuse
+
+For every finding: estimated impact (high/medium/low), exact location, root cause, concrete optimised replacement with complexity analysis. ${tone} ${noBrowser}`,
+
+    'qa-tester': `You are ${name}, a QA Tester running on ${id}. Your job is to design a test strategy that will catch real bugs — not just happy-path coverage.
+
+Produce:
+1. Test plan covering: unit tests for core logic, integration tests for API/component boundaries, end-to-end tests for critical user flows
+2. Edge cases that are likely to break: boundary values, empty/null inputs, concurrency, error states, large data volumes
+3. Regression risks: what existing behaviour could this change break?
+4. Test cases in structured format: Given / When / Then
+5. Specific test code examples using Vitest (or the project's existing test framework)
+
+Flag any code paths that are currently untestable and recommend how to make them testable. ${tone} ${noBrowser}`,
+
+    'information-architect': `You are ${name}, an Information Architect running on ${id}. You design the structure of information so it is discoverable, consistent, and scalable.
+
+Analyse and produce:
+1. Data taxonomy: how entities relate, naming conventions, conceptual hierarchy
+2. Information hierarchy: what is primary vs. secondary vs. metadata
+3. Schema design: fields, types, relationships, constraints — with rationale for each decision
+4. Navigation and discoverability: how users/systems find and traverse the information
+5. Consistency audit: naming conflicts, redundant structures, implicit assumptions that should be explicit
+6. Migration path: if restructuring existing data, the safe sequence of changes
+
+Output should be precise enough for an engineer to implement without ambiguity. ${tone} ${noBrowser}`,
+
+    'debugger': `You are ${name}, a Debugger running on ${id}. You specialise in root cause analysis — not just identifying symptoms but tracing them to their origin.
+
+Your methodology:
+1. Reproduce: define the exact minimal steps to trigger the bug
+2. Hypothesise: list all plausible root causes, ranked by likelihood
+3. Isolate: describe the specific tests/checks to confirm or rule out each hypothesis
+4. Root cause: the single deepest cause in the causal chain
+5. Fix: the minimal code change that addresses the root cause (not just the symptom)
+6. Verification: how to confirm the fix works and has not introduced regressions
+
+Examine stack traces, error messages, and code paths systematically. State what you know vs. what you are inferring. ${tone} ${noBrowser}`,
+
+    'dependency-expert': `You are ${name}, a Dependency Expert running on ${id}. You analyse software dependencies for risks, conflicts, and optimisation opportunities.
+
+Review:
+1. Version conflicts: incompatible peer dependencies, diamond dependency problems
+2. Security advisories: known CVEs in direct and transitive dependencies (reference specific CVE IDs where known)
+3. Outdated packages: packages significantly behind latest stable, especially those with security or breaking-change releases
+4. Bundle impact: heavy dependencies that could be replaced with lighter alternatives or native APIs
+5. Licence compliance: packages with licences incompatible with the project's licence
+6. Redundancy: multiple packages solving the same problem
+7. Maintenance status: abandoned packages (no commits in 2+ years, unresolved critical issues)
+
+For each finding: severity, package name and version, specific risk, recommended action. ${tone} ${noBrowser}`,
   }
   let prompt = prompts[role] ?? prompts.researcher
 
@@ -1165,14 +1243,25 @@ async function executeWorkers(
   return outputs
 }
 
+export interface RunMultiAgentOptions {
+  browserEnabled?: boolean
+  persistentMode?: { maxRetries: number; acceptanceCriteria?: string }
+  suggestedRoles?: AgentRole[]
+}
+
 // ── Fresh task ─────────────────────────────────────────────────────────────────
 export async function runMultiAgentTask(
   task: string,
   keys: ProviderKeys,
   canvasSize: { w: number; h: number },
   update: MAUpdater,
-  browserEnabled = false,
+  browserEnabledOrOptions: boolean | RunMultiAgentOptions = false,
 ): Promise<void> {
+  // Normalise the overloaded 5th argument
+  const opts: RunMultiAgentOptions = typeof browserEnabledOrOptions === 'boolean'
+    ? { browserEnabled: browserEnabledOrOptions }
+    : browserEnabledOrOptions
+  const browserEnabled = opts.browserEnabled ?? false
   const ORCH = 'orchestrator'
   const { w: W, h: H } = canvasSize
   const availableProviders = getAvailableProviders(keys)
@@ -1184,7 +1273,10 @@ export async function runMultiAgentTask(
 
   let planRaw = ''
   try {
-    await streamAnthropic('claude-sonnet-4-6', buildOrchestratorSystem(availableProviders, browserEnabled), `Task: ${task}`, keys.anthropic ?? '', 4096,
+    const roleHint = opts.suggestedRoles?.length
+      ? `[TEAM HINT: Use these specific agent roles for this task: ${opts.suggestedRoles.join(', ')}]\n\n`
+      : ''
+    await streamAnthropic('claude-sonnet-4-6', buildOrchestratorSystem(availableProviders, browserEnabled), `${roleHint}Task: ${task}`, keys.anthropic ?? '', 4096,
       t => { planRaw += t; update(s => ({ ...s, agents: s.agents.map(a => a.id === ORCH ? { ...a, output: planRaw } : a) })) },
     )
   } catch (e) { update(s => ({ ...s, phase: 'error', errorMsg: String(e) })); return }
@@ -1197,38 +1289,85 @@ export async function runMultiAgentTask(
     if (!Array.isArray(plan.agents) || plan.agents.length === 0) throw new Error('empty')
   } catch { update(s => ({ ...s, phase: 'error', errorMsg: 'Orchestrator returned an invalid plan — please try again.' })); return }
 
-  const positions = computePositions(plan.agents.length, W, H)
-  const workers: MAAgent[] = plan.agents.map((p, i) => planAgentToMAAgent(p, positions[i + 1], availableProviders))
+  // ── Persistent mode execution loop (Feature 3) ────────────────────────────────
+  const maxRetries = opts.persistentMode?.maxRetries ?? 0
+  const acceptanceCriteria = opts.persistentMode?.acceptanceCriteria ?? ''
 
-  update(s => ({
-    ...s, phase: 'executing', totalAgents: workers.length + 1,
-    agents: [
-      { ...s.agents[0], status: 'done', output: `Plan ready — deploying ${workers.length} agents`, x: positions[0].x, y: positions[0].y },
-      ...workers,
-    ],
-    messages: [...s.messages, ...workers.map(w => ({ id: makeId(), fromId: ORCH, toId: w.id, content: `Deploy ${w.name} [${w.modelLabel}]`, ts: Date.now() }))],
-  }))
+  const runOnce = async (attemptTask: string, attemptNum: number): Promise<string> => {
+    const positions = computePositions(plan.agents.length, W, H)
+    const workers: MAAgent[] = plan.agents.map((p, i) => planAgentToMAAgent(p, positions[i + 1], availableProviders))
 
-  await sleep(400)
-  const outputs = await executeWorkers(workers, {}, workers, keys, availableProviders, update, keys.tavily)
+    update(s => ({
+      ...s, phase: 'executing', totalAgents: workers.length + 1,
+      agents: [
+        { ...s.agents[0], status: 'done', output: `Plan ready — deploying ${workers.length} agents${attemptNum > 0 ? ` (retry ${attemptNum})` : ''}`, x: positions[0].x, y: positions[0].y },
+        ...workers,
+      ],
+      messages: [...s.messages, ...workers.map(w => ({ id: makeId(), fromId: ORCH, toId: w.id, content: `Deploy ${w.name} [${w.modelLabel}]`, ts: Date.now() }))],
+    }))
 
-  update(s => ({
-    ...s, phase: 'synthesizing',
-    agents: s.agents.map(a => a.id === ORCH ? { ...a, status: 'working', output: 'Synthesizing all outputs...' } : a),
-  }))
+    await sleep(400)
+    const outputs = await executeWorkers(workers, {}, workers, keys, availableProviders, update, keys.tavily)
 
-  const cleanOutput = (s: string) => s.replace(/^↻[^\n]*\n\n?/, '').replace(/\n⚠[^\n]*/g, '').trim()
-  const synthInput = workers.map(w => `[${w.name}]:\n${cleanOutput(outputs[w.id] ?? '(no output)')}`).join('\n\n---\n\n')
-  const synthPrompt = `Original task: "${task}"\n\nAgent research:\n${synthInput}\n\nUsing the research above, write a direct, comprehensive answer to the task.`
+    update(s => ({
+      ...s, phase: 'synthesizing',
+      agents: s.agents.map(a => a.id === ORCH ? { ...a, status: 'working', output: 'Synthesizing all outputs...' } : a),
+    }))
 
-  let finalOutput = ''
-  try {
+    const cleanOutputFn = (s: string) => s.replace(/^↻[^\n]*\n\n?/, '').replace(/\n⚠[^\n]*/g, '').trim()
+    const synthInput = workers.map(w => `[${w.name}]:\n${cleanOutputFn(outputs[w.id] ?? '(no output)')}`).join('\n\n---\n\n')
+    const synthPrompt = `Original task: "${attemptTask}"\n\nAgent research:\n${synthInput}\n\nUsing the research above, write a direct, comprehensive answer to the task.`
+
+    let output = ''
     await streamAnthropic('claude-sonnet-4-6',
       'You are a synthesis agent. Using the agent research below, write a single direct, natural response that fully answers the original task. Do not mention agents, providers, models, or system routing. Write as if you researched this yourself. Plain prose.',
       synthPrompt, keys.anthropic ?? '', 8096,
-      t => { finalOutput += t; update(s => ({ ...s, finalOutput })) },
+      t => { output += t; update(s => ({ ...s, finalOutput: output })) },
     )
+    return output
+  }
+
+  let finalOutput = ''
+  let attempt = 0
+
+  try {
+    finalOutput = await runOnce(task, attempt)
   } catch (e) { update(s => ({ ...s, phase: 'error', errorMsg: String(e) })); return }
+
+  // Persistent mode: evaluate and retry if needed
+  if (maxRetries > 0 && keys.anthropic) {
+    while (attempt < maxRetries) {
+      // Evaluate whether the output meets acceptance criteria
+      const evalPrompt = acceptanceCriteria
+        ? `Does the following output fully satisfy this acceptance criteria?\n\nCriteria: ${acceptanceCriteria}\n\nOutput:\n${finalOutput}\n\nRespond with only "YES" or "NO" followed by one sentence explaining why.`
+        : `Does the following output fully and comprehensively answer this task?\n\nTask: ${task}\n\nOutput:\n${finalOutput}\n\nRespond with only "YES" or "NO" followed by one sentence explaining why.`
+
+      let evalResult = ''
+      try {
+        await streamAnthropic('claude-sonnet-4-6',
+          'You are a strict quality evaluator. Assess whether the output fully satisfies the requirements. Be demanding — only say YES if the output is genuinely complete and high quality.',
+          evalPrompt, keys.anthropic, 256,
+          t => { evalResult += t },
+        )
+      } catch { break } // If eval fails, accept current output
+
+      if (evalResult.trim().toUpperCase().startsWith('YES')) break
+
+      attempt++
+      if (attempt >= maxRetries) break
+
+      // Re-run with context from previous attempt
+      update(s => ({
+        ...s, phase: 'planning',
+        agents: s.agents.map(a => a.id === ORCH ? { ...a, status: 'thinking', output: `Retry ${attempt}/${maxRetries}: ${evalResult.slice(0, 100)}` } : a),
+      }))
+
+      const retryTask = `${task}\n\n[Previous attempt was insufficient. Reason: ${evalResult}. Please improve the output.]`
+      try {
+        finalOutput = await runOnce(retryTask, attempt)
+      } catch (e) { update(s => ({ ...s, phase: 'error', errorMsg: String(e) })); return }
+    }
+  }
 
   update(s => ({
     ...s, phase: 'done', finalOutput,
@@ -1330,11 +1469,18 @@ export async function runFollowUpTask(
   const cleanOutput = (s: string) => s.replace(/^↻[^\n]*\n\n?/, '').replace(/\n⚠[^\n]*/g, '').trim()
   const synthInput = synthAgents.map(w => `[${w.name}]:\n${cleanOutput(allOutputs[w.id])}`).join('\n\n---\n\n')
 
+  const previousOutput = currentState.finalOutput?.trim()
+  const synthUserMsg = [
+    `Follow-up question: "${question}"`,
+    previousOutput ? `\n\nPrevious response (full context):\n${previousOutput}` : '',
+    synthInput ? `\n\nNew research from agents:\n${synthInput}` : '',
+  ].join('')
+
   let finalOutput = ''
   try {
     await streamAnthropic('claude-sonnet-4-6',
-      'You are a synthesis agent. Using the research below, write a single direct, natural response that fully answers the follow-up question. Do not mention agents, providers, models, or system routing. Write as if you researched this yourself. Plain prose.',
-      `Question: "${question}"\n\nResearch:\n${synthInput}`,
+      'You are a synthesis agent. Directly and completely answer the follow-up question using the previous response and any new research as context. Do not mention agents, providers, models, or system routing. Write as if you researched this yourself. Plain prose.',
+      synthUserMsg,
       keys.anthropic ?? '', 8096,
       t => { finalOutput += t; update(s => ({ ...s, finalOutput })) },
     )

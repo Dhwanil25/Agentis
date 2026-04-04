@@ -16,6 +16,143 @@ import {
 } from '@/lib/agentSkills'
 import type { AgentRole } from '@/lib/multiAgentEngine'
 
+const SELECTABLE_ROLES: AgentRole[] = [
+  'researcher', 'analyst', 'writer', 'coder', 'reviewer', 'planner', 'summarizer', 'browser',
+  'security-reviewer', 'performance-reviewer', 'qa-tester', 'information-architect', 'debugger', 'dependency-expert',
+]
+
+// ── LaunchModal ────────────────────────────────────────────────────────────────
+function LaunchModal({ entry, apiKey, onClose, onLaunch }: {
+  entry: SkillEntry
+  apiKey: string
+  onClose: () => void
+  onLaunch: (roles: AgentRole[]) => void
+}) {
+  const [loading, setLoading] = useState(true)
+  const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>(['researcher', 'analyst', 'reviewer'])
+
+  useEffect(() => {
+    const suggest = async () => {
+      try {
+        const res = await fetch('/anthropic/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 128,
+            messages: [{
+              role: 'user',
+              content: `Skill: "${entry.name}" (category: ${entry.category})\n\nAvailable agent roles: ${SELECTABLE_ROLES.join(', ')}\n\nSuggest 2-4 roles that work best together for tasks using this skill. Reply with only a JSON array, e.g. ["researcher","analyst"]`,
+            }],
+          }),
+        })
+        const data = await res.json() as { content?: { text: string }[] }
+        const text = data.content?.[0]?.text ?? ''
+        const match = text.match(/\[[\s\S]*?\]/)
+        if (match) {
+          const parsed = JSON.parse(match[0]) as string[]
+          const valid = parsed.filter((r): r is AgentRole => SELECTABLE_ROLES.includes(r as AgentRole))
+          if (valid.length > 0) setSelectedRoles(valid)
+        }
+      } catch { /* keep defaults */ }
+      setLoading(false)
+    }
+    suggest()
+  }, [entry, apiKey])
+
+  const toggle = (role: AgentRole) =>
+    setSelectedRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role])
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1000,
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 12, padding: 24, width: 420, maxWidth: '90vw',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <span style={{ fontSize: 15 }}>⬡</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)' }}>Launch as Universe</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{entry.name}</div>
+          </div>
+          {loading && (
+            <div style={{
+              marginLeft: 'auto', width: 14, height: 14, borderRadius: '50%',
+              border: '2px solid #6366f1', borderTopColor: 'transparent',
+              animation: 'spin 0.7s linear infinite', flexShrink: 0,
+            }} />
+          )}
+        </div>
+
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+          {loading ? 'Claude is suggesting the best team for this skill…' : 'Select the agents for your team. You can adjust these before running.'}
+        </div>
+
+        {/* Role chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+          {SELECTABLE_ROLES.map(role => {
+            const active = selectedRoles.includes(role)
+            const colors: Record<AgentRole, string> = {
+              orchestrator: '#f97316', researcher: '#3b82f6', analyst: '#06b6d4',
+              writer: '#10b981', coder: '#eab308', reviewer: '#ec4899',
+              planner: '#8b5cf6', summarizer: '#64748b', browser: '#22d3ee',
+              'security-reviewer': '#ef4444', 'performance-reviewer': '#f59e0b',
+              'qa-tester': '#84cc16', 'information-architect': '#a78bfa',
+              'debugger': '#fb923c', 'dependency-expert': '#38bdf8',
+            }
+            const c = colors[role]
+            return (
+              <button key={role} onClick={() => toggle(role)} style={{
+                fontSize: 11, padding: '4px 12px', borderRadius: 20,
+                border: `1px solid ${active ? c : 'var(--border)'}`,
+                background: active ? `${c}20` : 'transparent',
+                color: active ? c : 'var(--muted)',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                fontWeight: active ? 600 : 400, transition: 'all 0.12s',
+              }}>
+                {role}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{
+            fontSize: 12, padding: '7px 16px', borderRadius: 7,
+            background: 'transparent', border: '1px solid var(--border)',
+            color: 'var(--muted)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>
+            Cancel
+          </button>
+          <button
+            disabled={selectedRoles.length === 0}
+            onClick={() => onLaunch(selectedRoles)}
+            style={{
+              fontSize: 12, padding: '7px 16px', borderRadius: 7,
+              background: selectedRoles.length > 0 ? '#6366f1' : 'rgba(99,102,241,0.3)',
+              border: 'none', color: '#fff',
+              cursor: selectedRoles.length > 0 ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-sans)', fontWeight: 600,
+            }}
+          >
+            Launch with {selectedRoles.length} agent{selectedRoles.length !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Tab = 'directory' | 'installed' | 'assignments'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -28,18 +165,27 @@ const CATEGORY_COLORS: Record<string, string> = {
   operations:  '#f59e0b',
 }
 
-const ALL_ROLES: AgentRole[] = ['orchestrator', 'researcher', 'analyst', 'writer', 'coder', 'reviewer', 'planner', 'summarizer', 'browser']
+const ALL_ROLES: AgentRole[] = [
+  'orchestrator', 'researcher', 'analyst', 'writer', 'coder', 'reviewer', 'planner', 'summarizer', 'browser',
+  'security-reviewer', 'performance-reviewer', 'qa-tester', 'information-architect', 'debugger', 'dependency-expert',
+]
 
 const ROLE_COLORS: Record<AgentRole, string> = {
-  orchestrator: '#f97316',
-  researcher:   '#3b82f6',
-  analyst:      '#06b6d4',
-  writer:       '#10b981',
-  coder:        '#eab308',
-  reviewer:     '#ec4899',
-  planner:      '#8b5cf6',
-  summarizer:   '#64748b',
-  browser:      '#22d3ee',
+  orchestrator:           '#f97316',
+  researcher:             '#3b82f6',
+  analyst:                '#06b6d4',
+  writer:                 '#10b981',
+  coder:                  '#eab308',
+  reviewer:               '#ec4899',
+  planner:                '#8b5cf6',
+  summarizer:             '#64748b',
+  browser:                '#22d3ee',
+  'security-reviewer':    '#ef4444',
+  'performance-reviewer': '#f59e0b',
+  'qa-tester':            '#84cc16',
+  'information-architect':'#a78bfa',
+  'debugger':             '#fb923c',
+  'dependency-expert':    '#38bdf8',
 }
 
 const DEFAULT_QUERIES = ['frontend', 'react', 'testing', 'ai', 'writing', 'research', 'design']
@@ -104,8 +250,15 @@ function InstallButton({ entry, onInstalled }: { entry: SkillEntry; onInstalled:
   )
 }
 
-function SkillCard({ entry, onInstalled }: { entry: SkillEntry; onInstalled: () => void }) {
+function SkillCard({ entry, apiKey, onInstalled, onLaunch }: {
+  entry: SkillEntry
+  apiKey: string
+  onInstalled: () => void
+  onLaunch: (roles: AgentRole[]) => void
+}) {
   const color = CATEGORY_COLORS[entry.category] ?? '#6b7280'
+  const [modalOpen, setModalOpen] = useState(false)
+
   return (
     <div className="card" style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
@@ -122,7 +275,7 @@ function SkillCard({ entry, onInstalled }: { entry: SkillEntry; onInstalled: () 
         </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
         <span style={{
           fontSize: 9, color: color,
           background: `${color}18`, border: `1px solid ${color}40`,
@@ -134,6 +287,32 @@ function SkillCard({ entry, onInstalled }: { entry: SkillEntry; onInstalled: () 
         </span>
         <InstallButton entry={entry} onInstalled={onInstalled} />
       </div>
+
+      {/* Launch as Universe button */}
+      <button
+        onClick={() => setModalOpen(true)}
+        style={{
+          width: '100%', fontSize: 10, padding: '5px 8px',
+          background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
+          borderRadius: 6, cursor: 'pointer', color: '#a5b4fc',
+          fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          transition: 'background 0.15s', fontFamily: 'var(--font-sans)',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.16)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)' }}
+      >
+        <span style={{ fontSize: 11 }}>⬡</span>
+        Launch as Universe
+      </button>
+
+      {modalOpen && (
+        <LaunchModal
+          entry={entry}
+          apiKey={apiKey}
+          onClose={() => setModalOpen(false)}
+          onLaunch={roles => { setModalOpen(false); onLaunch(roles) }}
+        />
+      )}
     </div>
   )
 }
@@ -211,7 +390,7 @@ function InstalledSkillRow({ skill, assignments, onRemove, onToggleRole }: {
   )
 }
 
-export function SkillsPage() {
+export function SkillsPage({ navigate, apiKey }: { navigate?: (page: string, opts?: { initialRoles?: AgentRole[] }) => void; apiKey?: string }) {
   const [tab, setTab] = useState<Tab>('directory')
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<SkillEntry[]>(SKILLS_DIRECTORY)
@@ -234,7 +413,8 @@ export function SkillsPage() {
   useEffect(() => {
     setSearching(true)
     searchSkillsDirectory(defaultQueryRef.current).then(res => {
-      if (res.length > 0) setResults(res)
+      const deduped = res.filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i)
+      if (deduped.length > 0) setResults(deduped)
       setSearching(false)
     })
   }, [])
@@ -250,7 +430,8 @@ export function SkillsPage() {
     setSearching(true)
     debounceRef.current = setTimeout(async () => {
       const res = await searchSkillsDirectory(search)
-      setResults(res.length > 0 ? res : SKILLS_DIRECTORY)
+      const deduped = res.filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i)
+      setResults(deduped.length > 0 ? deduped : SKILLS_DIRECTORY)
       setSearching(false)
     }, 350)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
@@ -323,7 +504,13 @@ export function SkillsPage() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }} key={tick}>
                 {results.map(entry => (
-                  <SkillCard key={entry.id} entry={entry} onInstalled={refresh} />
+                  <SkillCard
+                    key={entry.id}
+                    entry={entry}
+                    apiKey={apiKey ?? ''}
+                    onInstalled={refresh}
+                    onLaunch={roles => navigate?.('universe', { initialRoles: roles })}
+                  />
                 ))}
               </div>
             )}
