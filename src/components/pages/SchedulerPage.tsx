@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getConfiguredChannels, sendToChannel } from '@/lib/channelDispatch'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ interface ScheduledJob {
   nextRun?: number
   createdAt: number
   runCount: number
+  notifyChannelId?: string  // channel to notify when job completes
 }
 
 interface RunRecord {
@@ -126,13 +128,15 @@ const INTERVAL_OPTIONS = [
 ]
 
 function NewJobForm({ onSave, onCancel }: { onSave: (job: ScheduledJob) => void; onCancel: () => void }) {
-  const [name,         setName]         = useState('')
-  const [task,         setTask]         = useState('')
-  const [persona,      setPersona]      = useState('dev')
-  const [scheduleType, setScheduleType] = useState<ScheduleType>('interval')
-  const [intervalMins, setIntervalMins] = useState(60)
-  const [dailyTime,    setDailyTime]    = useState('09:00')
+  const [name,            setName]            = useState('')
+  const [task,            setTask]            = useState('')
+  const [persona,         setPersona]         = useState('dev')
+  const [scheduleType,    setScheduleType]    = useState<ScheduleType>('interval')
+  const [intervalMins,    setIntervalMins]    = useState(60)
+  const [dailyTime,       setDailyTime]       = useState('09:00')
+  const [notifyChannelId, setNotifyChannelId] = useState('')
 
+  const channels = getConfiguredChannels()
   const valid = name.trim() && task.trim()
 
   const handleSave = () => {
@@ -149,6 +153,7 @@ function NewJobForm({ onSave, onCancel }: { onSave: (job: ScheduledJob) => void;
       enabled: true,
       createdAt: now,
       runCount: 0,
+      notifyChannelId: notifyChannelId || undefined,
     }
     job.nextRun = computeNextRun(job, now)
     onSave(job)
@@ -231,6 +236,17 @@ function NewJobForm({ onSave, onCancel }: { onSave: (job: ScheduledJob) => void;
         </div>
       </div>
 
+      {/* Channel notification */}
+      {channels.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>Notify channel when done (optional)</label>
+          <select value={notifyChannelId} onChange={e => setNotifyChannelId(e.target.value)} style={{ width: '100%', fontSize: 12 }}>
+            <option value="">None</option>
+            {channels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+          </select>
+        </div>
+      )}
+
       {/* Preview */}
       <div style={{
         padding: '8px 12px', background: 'var(--bg)', border: '1px solid var(--border)',
@@ -275,6 +291,21 @@ export function SchedulerPage({ execute, navigate, reset, agentRunning }: Props)
   const executeRef = useRef(execute)
   executeRef.current = execute
 
+  // Track pending channel notification: set when a job fires, cleared after agentRunning→false
+  const pendingNotifyRef = useRef<{ channelId: string; jobName: string; task: string } | null>(null)
+  const prevRunningRef   = useRef(agentRunning)
+
+  // When agentRunning transitions false → send pending notification
+  useEffect(() => {
+    const wasRunning = prevRunningRef.current
+    prevRunningRef.current = agentRunning
+    if (wasRunning && !agentRunning && pendingNotifyRef.current) {
+      const { channelId, jobName, task } = pendingNotifyRef.current
+      pendingNotifyRef.current = null
+      void sendToChannel(channelId, `Scheduled job "${jobName}" completed.\n\nTask: ${task}`)
+    }
+  }, [agentRunning])
+
   // Persist jobs on change
   useEffect(() => { saveJobs(jobs) }, [jobs])
 
@@ -297,6 +328,11 @@ export function SchedulerPage({ execute, navigate, reset, agentRunning }: Props)
           }
           setRunHistory(h => { const updated = [...h, rec]; saveRunHistory(updated); return updated })
           setLastFired(job.name)
+
+          // Queue channel notification if configured
+          if (job.notifyChannelId) {
+            pendingNotifyRef.current = { channelId: job.notifyChannelId, jobName: job.name, task: job.task }
+          }
 
           // Fire: navigate to Chat and execute so user can see output + stop it
           navigate('chat')
@@ -331,6 +367,11 @@ export function SchedulerPage({ execute, navigate, reset, agentRunning }: Props)
     setJobs(prev => prev.map(j => j.id === job.id ? {
       ...j, lastRun: Date.now(), runCount: j.runCount + 1, nextRun: computeNextRun(j),
     } : j))
+
+    // Queue channel notification if configured
+    if (job.notifyChannelId) {
+      pendingNotifyRef.current = { channelId: job.notifyChannelId, jobName: job.name, task: job.task }
+    }
 
     // Navigate to Chat so the user sees streaming output and can stop it
     navigate('chat')

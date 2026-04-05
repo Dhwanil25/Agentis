@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAgent } from '@/hooks/useAgent'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatPage } from '@/components/pages/ChatPage'
@@ -17,6 +17,8 @@ import { UniversePage } from '@/components/pages/UniversePage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
 import { DocsPage } from '@/components/pages/DocsPage'
 import { addHistoryEntry } from '@/components/DashboardScreen'
+import { isPinSet, isLocked, verifyPin, unlock, updateActivity, checkInactivityLock, getLockSettings } from '@/lib/pinLock'
+import { useDiscordListener } from '@/hooks/useDiscordListener'
 
 type Page =
   | 'chat' | 'overview' | 'analytics' | 'logs' | 'sessions'
@@ -33,7 +35,38 @@ export default function App() {
   })
   const [page, setPage] = useState<Page>('overview')
   const [universeInitialRoles, setUniverseInitialRoles] = useState<import('@/lib/multiAgentEngine').AgentRole[] | undefined>(undefined)
+  const [universeAutoStart, setUniverseAutoStart] = useState<string | undefined>(undefined)
+  const [universeOnComplete, setUniverseOnComplete] = useState<((output: string) => void) | undefined>(undefined)
+  const [universeFollowUp, setUniverseFollowUp] = useState<string | undefined>(undefined)
+  const [universeOnFollowUpComplete, setUniverseOnFollowUpComplete] = useState<((output: string) => void) | undefined>(undefined)
   const [engineRunning, setEngineRunning] = useState(false)
+
+  // ── PIN lock ───────────────────────────────────────────────────────────────
+  const [locked, setLocked] = useState(() => isPinSet() && getLockSettings().enabled)
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState('')
+  const inactivityRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    const onActivity = () => updateActivity()
+    window.addEventListener('mousemove', onActivity)
+    window.addEventListener('keydown', onActivity)
+    inactivityRef.current = setInterval(() => {
+      if (checkInactivityLock()) setLocked(true)
+    }, 30_000)
+    return () => {
+      window.removeEventListener('mousemove', onActivity)
+      window.removeEventListener('keydown', onActivity)
+      if (inactivityRef.current) clearInterval(inactivityRef.current)
+    }
+  }, [])
+
+  // Re-sync locked state when PIN settings change (e.g. PIN just set)
+  useEffect(() => {
+    const handler = () => setLocked(isLocked())
+    window.addEventListener('agentis_lock_update', handler)
+    return () => window.removeEventListener('agentis_lock_update', handler)
+  }, [])
 
   // Poll engine status
   useEffect(() => {
@@ -85,12 +118,77 @@ export default function App() {
     })
   }, [agentState.step]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const navigate = (p: string, opts?: { initialRoles?: import('@/lib/multiAgentEngine').AgentRole[] }) => {
-    if (p === 'universe') setUniverseInitialRoles(opts?.initialRoles)
-    else if (opts?.initialRoles !== undefined) setUniverseInitialRoles(opts.initialRoles)
+  const navigate = (p: string, opts?: {
+    initialRoles?: import('@/lib/multiAgentEngine').AgentRole[]
+    autoStart?: string
+    onComplete?: (output: string) => void
+    followUp?: string
+    onFollowUpComplete?: (output: string) => void
+  }) => {
+    if (p === 'universe') {
+      setUniverseInitialRoles(opts?.initialRoles)
+      if (opts?.autoStart !== undefined) setUniverseAutoStart(opts.autoStart)
+      if (opts?.onComplete !== undefined) setUniverseOnComplete(() => opts.onComplete!)
+      if (opts?.followUp !== undefined) setUniverseFollowUp(opts.followUp)
+      if (opts?.onFollowUpComplete !== undefined) setUniverseOnFollowUpComplete(() => opts.onFollowUpComplete!)
+    } else if (opts?.initialRoles !== undefined) {
+      setUniverseInitialRoles(opts.initialRoles)
+    }
     setPage(p as Page)
     // Reset chat state when navigating away from chat
     if (p !== 'chat') reset()
+  }
+
+  const discordListener = useDiscordListener({ navigate })
+
+  // ── PIN lock screen ────────────────────────────────────────────────────────────
+  if (locked) {
+    return (
+      <div className="shell-center">
+        <div style={{ width: '100%', maxWidth: 360, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+            <img src="/favicon.png" alt="Agentis" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain' }} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>AGENTIS</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Locked</div>
+            </div>
+            <div style={{ marginLeft: 'auto', width: 32, height: 32, borderRadius: '50%', background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔒</div>
+          </div>
+
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>Enter your PIN to unlock</div>
+
+          <input
+            type="password"
+            placeholder="PIN"
+            value={pinInput}
+            autoFocus
+            onChange={e => { setPinInput(e.target.value); setPinError('') }}
+            onKeyDown={async e => {
+              if (e.key !== 'Enter' || !pinInput) return
+              const ok = await verifyPin(pinInput)
+              if (ok) { unlock(); setLocked(false); setPinInput('') }
+              else { setPinError('Incorrect PIN'); setPinInput('') }
+            }}
+            style={{ width: '100%', marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 18, letterSpacing: '0.3em', textAlign: 'center' }}
+          />
+
+          {pinError && <div style={{ fontSize: 11, color: 'var(--red)', marginBottom: 8, textAlign: 'center' }}>{pinError}</div>}
+
+          <button
+            className="btn-primary"
+            style={{ width: '100%', padding: '10px', fontSize: 14 }}
+            onClick={async () => {
+              if (!pinInput) return
+              const ok = await verifyPin(pinInput)
+              if (ok) { unlock(); setLocked(false); setPinInput('') }
+              else { setPinError('Incorrect PIN'); setPinInput('') }
+            }}
+          >
+            Unlock
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // ── API key gate ──────────────────────────────────────────────────────────────
@@ -232,7 +330,7 @@ export default function App() {
           />
         </div>
 
-        {page === 'channels' && <ChannelsPage />}
+        {page === 'channels' && <ChannelsPage discordListening={discordListener.active} discordProcessed={discordListener.processed} />}
 
         {page === 'skills' && <SkillsPage navigate={navigate} apiKey={apiKey} />}
 
@@ -241,7 +339,18 @@ export default function App() {
           <HandsPage apiKey={apiKey} />
         </div>
 
-        {page === 'universe' && <UniversePage apiKey={apiKey} initialRoles={universeInitialRoles} />}
+        {page === 'universe' && (
+          <UniversePage
+            apiKey={apiKey}
+            initialRoles={universeInitialRoles}
+            autoStart={universeAutoStart}
+            onComplete={universeOnComplete}
+            onConsumedAutoStart={() => setUniverseAutoStart(undefined)}
+            discordFollowUp={universeFollowUp}
+            onFollowUpComplete={universeOnFollowUpComplete}
+            onConsumedFollowUp={() => setUniverseFollowUp(undefined)}
+          />
+        )}
 
         {page === 'settings' && (
           <SettingsPage
