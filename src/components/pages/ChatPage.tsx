@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { ChannelSendButton } from '@/components/ChannelSendButton'
 import { PERSONAS } from '@/data/personas'
 import type { Persona } from '@/types'
 import type { AgentStateEx, PipelineStep } from '@/hooks/useAgent'
@@ -834,12 +835,18 @@ export function ChatPage({ agentState, execute, reset }: Props) {
 
               {step === 'output' && (
                 <div>
-                  <div className="tab-bar">
-                    {pipeline.map(s => (
-                      <button key={s.id} className={`tab-btn${outputTab === s.id ? ' active' : ''}`} onClick={() => setOutputTab(s.id)}>
-                        {s.skill}
-                      </button>
-                    ))}
+                  <div className="tab-bar" style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flex: 1, flexWrap: 'wrap', gap: 2 }}>
+                      {pipeline.map(s => (
+                        <button key={s.id} className={`tab-btn${outputTab === s.id ? ' active' : ''}`} onClick={() => setOutputTab(s.id)}>
+                          {s.skill}
+                        </button>
+                      ))}
+                    </div>
+                    <ChannelSendButton
+                      message={pipeline.map(s => `## ${s.title}\n\n${s.output}`).join('\n\n---\n\n')}
+                      style={{ marginLeft: 8, flexShrink: 0 }}
+                    />
                   </div>
                   {pipeline.find(s => s.id === outputTab) && (
                     <div>

@@ -5,6 +5,7 @@ import {
   type MAState, type MAAgent, type ProviderKeys, type LLMProvider,
 } from '@/lib/multiAgentEngine'
 import { addMemory } from '@/lib/memory'
+import { ChannelSendButton } from '@/components/ChannelSendButton'
 import { Universe3D } from '@/components/Universe3D'
 import { FlowGraph } from '@/components/FlowGraph'
 import { TimelinePanel } from '@/components/TimelinePanel'
@@ -15,6 +16,12 @@ import { addUsageRecord, calculateCost } from '@/lib/analytics'
 interface Props {
   apiKey: string
   initialRoles?: import('@/lib/multiAgentEngine').AgentRole[]
+  autoStart?: string
+  onComplete?: (output: string) => void
+  onConsumedAutoStart?: () => void
+  discordFollowUp?: string
+  onFollowUpComplete?: (output: string) => void
+  onConsumedFollowUp?: () => void
 }
 
 // ── Phase badge ────────────────────────────────────────────────────────────────
@@ -829,7 +836,7 @@ function RightPanel({
                   {phase === 'done' ? `✦ ${messages.length > 1 ? `Chat · ${Math.ceil(messages.length / 2)} exchanges` : 'Synthesis'}` : 'Synthesizing...'}
                 </span>
                 {phase === 'done' && (
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <button className="btn-ghost" onClick={onCopyOutput} style={{ fontSize: 10, padding: '2px 8px' }}>
                       {copiedOutput ? '✓' : 'Copy'}
                     </button>
@@ -918,6 +925,7 @@ function RightPanel({
                       style={{ flex: 1, fontSize: 10, padding: '5px 0' }}>
                       ← Team
                     </button>
+                    <ChannelSendButton message={finalOutput} style={{ flex: 1, padding: '5px 0', textAlign: 'center' }} />
                   </div>
                 </div>
               )}
@@ -930,7 +938,7 @@ function RightPanel({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function UniversePage({ apiKey, initialRoles: initialRolesProp }: Props) {
+export function UniversePage({ apiKey, initialRoles: initialRolesProp, autoStart, onComplete, onConsumedAutoStart, discordFollowUp, onFollowUpComplete, onConsumedFollowUp }: Props) {
   const [maState, setMaState] = useState<MAState>(INITIAL_MA_STATE)
   const [task, setTask] = useState('')
   const [activeRoles, setActiveRoles] = useState(initialRolesProp)
@@ -1083,6 +1091,40 @@ export function UniversePage({ apiKey, initialRoles: initialRolesProp }: Props) 
       setRunning(false)
     }
   }
+
+  // Auto-start from Discord !run command
+  const autoStartTriggeredRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!autoStart || autoStart === autoStartTriggeredRef.current || !hasAnyKey || running) return
+    autoStartTriggeredRef.current = autoStart
+    pendingCallbackRef.current = onComplete  // set before async call
+    setTask(autoStart)
+    onConsumedAutoStart?.()
+    void handleLaunch(autoStart)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, hasAnyKey])
+
+  // Single ref holds whichever Discord callback is waiting for the current run
+  const pendingCallbackRef = useRef<((output: string) => void) | undefined>(undefined)
+
+  // Auto follow-up from Discord
+  const followUpTriggeredRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!discordFollowUp || discordFollowUp === followUpTriggeredRef.current || !hasAnyKey || running) return
+    followUpTriggeredRef.current = discordFollowUp
+    pendingCallbackRef.current = onFollowUpComplete  // set before async call
+    onConsumedFollowUp?.()
+    void handleFollowUp(discordFollowUp)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discordFollowUp, hasAnyKey])
+
+  // Notify Discord when Universe run completes (works for both initial run and follow-ups)
+  useEffect(() => {
+    if (maState.phase !== 'done' || !maState.finalOutput) return
+    pendingCallbackRef.current?.(maState.finalOutput)
+    pendingCallbackRef.current = undefined
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maState.phase])
 
   const handleFollowUp = async (question: string) => {
     if (!question.trim() || !hasAnyKey || running) return

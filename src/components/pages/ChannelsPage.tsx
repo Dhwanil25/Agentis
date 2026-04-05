@@ -6,9 +6,10 @@ interface FieldDef {
   key: string
   label: string
   placeholder: string
-  type?: 'text' | 'password' | 'url' | 'number'
+  type?: 'text' | 'password' | 'url' | 'number' | 'toggle'
   hint?: string
   docsUrl?: string
+  optional?: boolean  // if true, not required for Save to be enabled
 }
 
 interface ChannelDef {
@@ -20,6 +21,8 @@ interface ChannelDef {
   time: string
   fields: FieldDef[]
   testable: boolean
+  /** Custom validation: returns true if the current values are sufficient to save/test */
+  isValid?: (values: Record<string, string>) => boolean
 }
 
 // ── Channel definitions with setup fields ─────────────────────────────────────
@@ -36,10 +39,14 @@ const CHANNELS: ChannelDef[] = [
   },
   {
     id: 'discord', name: 'Discord', category: 'messaging',
-    description: 'Post to Discord channels via webhook',
+    description: 'Post to Discord channels via bot application or webhook',
     difficulty: 'Easy', time: '2 min', testable: true,
+    isValid: (v) => !!(v.webhookUrl?.trim() || (v.botToken?.trim() && v.channelId?.trim())),
     fields: [
-      { key: 'webhookUrl', label: 'Webhook URL', placeholder: 'https://discord.com/api/webhooks/...', type: 'url', hint: 'Channel Settings → Integrations → Webhooks → New Webhook', docsUrl: 'https://discord.com/developers/docs/resources/webhook' },
+      { key: 'botToken', label: 'Bot Token', placeholder: 'MTIz...', type: 'password', hint: 'Discord Developer Portal → Your App → Bot → Token', docsUrl: 'https://discord.com/developers/applications', optional: true },
+      { key: 'channelId', label: 'Channel ID', placeholder: '1234567890123456789', hint: 'Right-click the channel → Copy Channel ID (enable Developer Mode in Discord settings first)', optional: true },
+      { key: 'webhookUrl', label: 'Webhook URL (alternative to bot)', placeholder: 'https://discord.com/api/webhooks/...', type: 'url', hint: 'Channel Settings → Integrations → Webhooks → New Webhook → Copy URL', optional: true },
+      { key: 'listenEnabled', label: 'Listen for !run commands', placeholder: '', type: 'toggle', hint: 'When on, Agentis polls this channel every 30s. Send "!run <your prompt>" to trigger agents.', optional: true },
     ],
   },
   {
@@ -244,12 +251,41 @@ async function testChannel(channelId: string, cfg: Record<string, string>): Prom
       }
 
       case 'discord': {
-        const res = await fetch(cfg.webhookUrl, {
+        const token = cfg.botToken?.trim()
+        const channelId = cfg.channelId?.trim()
+        if (token && channelId) {
+          const headers = { 'Authorization': `Bot ${token}`, 'Content-Type': 'application/json' }
+
+          // Step 1: verify token
+          const meRes = await fetch('/discord-api/api/v10/users/@me', { headers })
+          if (meRes.status === 401) return { ok: false, msg: 'Invalid bot token — go to Developer Portal → Bot → Reset Token and paste the new one' }
+          if (!meRes.ok) return { ok: false, msg: `Token check failed (${meRes.status})` }
+          const me = await meRes.json() as { username?: string }
+
+          // Step 2: verify channel access
+          const chRes = await fetch(`/discord-api/api/v10/channels/${channelId}`, { headers })
+          if (chRes.status === 404) return { ok: false, msg: 'Channel not found — check the Channel ID (right-click channel → Copy Channel ID)' }
+          if (chRes.status === 403) return { ok: false, msg: `Bot "${me.username}" can't see this channel — in Discord, go to channel settings → Permissions → add the bot with View Channel ✓` }
+          if (!chRes.ok) return { ok: false, msg: `Channel check failed (${chRes.status})` }
+
+          // Step 3: send message
+          const sendRes = await fetch(`/discord-api/api/v10/channels/${channelId}/messages`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ content: 'Agentis channel test — connection confirmed.' }),
+          })
+          if (sendRes.ok) return { ok: true, msg: `Message sent via bot "${me.username}"` }
+          let sd: { message?: string; code?: number } = {}
+          try { sd = await sendRes.json() } catch { /* ignore */ }
+          if (sendRes.status === 403) return { ok: false, msg: `Bot "${me.username}" can't send messages here — in channel settings → Permissions, add the bot with Send Messages ✓` }
+          return { ok: false, msg: sd.message ?? `Discord error ${sendRes.status}` }
+        }
+        // Webhook fallback
+        const res = await fetch(cfg.webhookUrl?.trim(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: 'Agentis channel test — connection confirmed.' }),
         })
-        return res.ok ? { ok: true, msg: 'Message posted to Discord' } : { ok: false, msg: `Discord error: ${res.status}` }
+        return res.ok ? { ok: true, msg: 'Message posted via Discord webhook' } : { ok: false, msg: `Discord error: ${res.status}` }
       }
 
       case 'slack': {
@@ -366,8 +402,11 @@ function SetupDrawer({
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [saved, setSaved] = useState(false)
+  const [showFields, setShowFields] = useState<Record<string, boolean>>({})
 
-  const allFilled = channel.fields.every(f => values[f.key]?.trim())
+  const allFilled = channel.isValid
+    ? channel.isValid(values)
+    : channel.fields.filter(f => !f.optional).every(f => values[f.key]?.trim())
 
   const handleSave = () => {
     saveConfig(channel.id, values)
@@ -432,28 +471,60 @@ function SetupDrawer({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {channel.fields.map(field => (
               <div key={field.key}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {field.label}
-                </label>
-                <input
-                  type={field.type ?? 'text'}
-                  value={values[field.key] ?? ''}
-                  onChange={e => setValues(s => ({ ...s, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  style={{ width: '100%', fontSize: 12, fontFamily: field.type === 'password' ? 'var(--font-mono)' : 'var(--font-sans)' }}
-                />
-                {(field.hint || field.docsUrl) && (
-                  <div style={{ marginTop: 5, fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
-                    {field.hint}
-                    {field.docsUrl && (
-                      <>
-                        {field.hint ? ' — ' : ''}
-                        <a href={field.docsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
-                          Docs →
-                        </a>
-                      </>
+                {field.type === 'toggle' ? (
+                  <button
+                    onClick={() => setValues(s => ({ ...s, [field.key]: s[field.key] === 'true' ? 'false' : 'true' }))}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                      background: values[field.key] === 'true' ? 'var(--accent-bg)' : 'var(--surface)',
+                      border: `1px solid ${values[field.key] === 'true' ? 'var(--accent-border)' : 'var(--border)'}`,
+                      borderRadius: 8, padding: '10px 12px', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 2 }}>{field.label}</div>
+                      {field.hint && <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.4 }}>{field.hint}</div>}
+                    </div>
+                    <div style={{ width: 36, height: 20, borderRadius: 10, background: values[field.key] === 'true' ? 'var(--accent)' : 'var(--border)', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                      <div style={{ position: 'absolute', top: 2, left: values[field.key] === 'true' ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    </div>
+                  </button>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {field.label}
+                      </label>
+                      {field.type === 'password' && (
+                        <button
+                          onClick={() => setShowFields(s => ({ ...s, [field.key]: !s[field.key] }))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--accent)', padding: 0 }}
+                        >
+                          {showFields[field.key] ? 'Hide' : 'Show'}
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type={field.type === 'password' && !showFields[field.key] ? 'password' : 'text'}
+                      value={values[field.key] ?? ''}
+                      onChange={e => setValues(s => ({ ...s, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      style={{ width: '100%', fontSize: 12, fontFamily: field.type === 'password' ? 'var(--font-mono)' : 'var(--font-sans)' }}
+                    />
+                    {(field.hint || field.docsUrl) && (
+                      <div style={{ marginTop: 5, fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
+                        {field.hint}
+                        {field.docsUrl && (
+                          <>
+                            {field.hint ? ' — ' : ''}
+                            <a href={field.docsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
+                              Docs →
+                            </a>
+                          </>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             ))}
@@ -525,7 +596,7 @@ const CATEGORY_LABELS: Record<ChannelCategory, string> = {
 
 // ── Main ChannelsPage ──────────────────────────────────────────────────────────
 
-export function ChannelsPage() {
+export function ChannelsPage({ discordListening = false, discordProcessed = 0 }: { discordListening?: boolean; discordProcessed?: number }) {
   const [activeCategory, setActiveCategory] = useState<ChannelCategory>('all')
   const [configs, setConfigs] = useState<Record<string, Record<string, string>>>(loadAllConfigs)
   const [setupChannel, setSetupChannel] = useState<ChannelDef | null>(null)
@@ -539,6 +610,8 @@ export function ChannelsPage() {
 
   const handleSave = (channelId: string, cfg: Record<string, string>) => {
     setConfigs(prev => ({ ...prev, [channelId]: cfg }))
+    // Notify same-tab listeners (storage events only fire in other tabs)
+    window.dispatchEvent(new CustomEvent('agentis_channels_update'))
   }
 
   const handleRemove = (channelId: string) => {
@@ -571,6 +644,12 @@ export function ChannelsPage() {
           {configuredCount > 0 && (
             <span className="badge badge-green" style={{ fontSize: 10 }}>
               {configuredCount} CONFIGURED
+            </span>
+          )}
+          {discordListening && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#10b981' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981', display: 'inline-block', animation: 'blink 1.5s step-end infinite' }} />
+              Discord listening{discordProcessed > 0 ? ` · ${discordProcessed} run${discordProcessed !== 1 ? 's' : ''}` : ''}
             </span>
           )}
         </div>
